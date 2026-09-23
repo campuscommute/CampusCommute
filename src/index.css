@@ -1,0 +1,136 @@
+/* Google Font import — must be first */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f0f4ff;
+  --color-brand-100: #e0eaff;
+  --color-brand-200: #c7d7fe;
+  --color-brand-300: #a5bcfd;
+  --color-brand-400: #8098fa;
+  --color-brand-500: #6172f3;
+  --color-brand-600: #4a51e8;
+  --color-brand-700: #3d3ecf;
+  --color-brand-800: #3235a7;
+  --color-brand-900: #2d3184;
+  --color-brand-950: #1c1e4e;
+
+  --color-surface-50: #f8f9fc;
+  --color-surface-100: #f1f3f9;
+  --color-surface-200: #e4e8f2;
+  --color-surface-300: #cdd3e6;
+  --color-surface-400: #a8b3cf;
+  --color-surface-500: #8594b5;
+  --color-surface-600: #6a789a;
+  --color-surface-700: #56617e;
+  --color-surface-800: #3e465c;
+  --color-surface-900: #272d3e;
+  --color-surface-950: #141824;
+
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-warning-500: #f59e0b;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  --shadow-card: 0 2px 16px 0 rgba(65, 82, 145, 0.08), 0 1px 3px 0 rgba(65, 82, 145, 0.05);
+  --shadow-card-hover: 0 8px 32px 0 rgba(65, 82, 145, 0.14), 0 2px 8px 0 rgba(65, 82, 145, 0.08);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface-50);
+    color: var(--color-surface-900);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-surface-300); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-surface-400); }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+
+  .glass-dark {
+    background: rgba(20, 24, 36, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-shadow-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .text-balance { text-wrap: balance; }
+
+  .gradient-brand {
+    background: linear-gradient(135deg, #6172f3 0%, #4a51e8 100%);
+  }
+
+  .gradient-hero {
+    background: linear-gradient(160deg, #f0f4ff 0%, #e8eeff 40%, #f8f9fc 100%);
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* iOS safe area bottom padding */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pb-safe-4 { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+  .pb-nav { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
+
+  /* Min touch target */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
