@@ -84,26 +84,26 @@ function PhoneField({ value, onChange, error }) {
 function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
   const { signUp } = useAuth();
 
-  const [step, setStep] = useState('details');
-  const [form, setForm] = useState({
+  const [step, setStep]     = useState('details');
+  const [form, setForm]     = useState({
     name: '', email: '', phone: '', college: '', gender: forceGender || '',
   });
-  const [pin, setPin]       = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [pin, setPin]           = useState('');
+  const [confirm, setConfirm]   = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
   const set = k => v => setForm(f => ({ ...f, [k]: v }));
 
   const validateDetails = () => {
     const e = {};
-    if (!form.name.trim())                             e.name    = 'Name is required';
-    if (!form.email.trim())                            e.email   = 'Email is required';
-    else if (!/^\S+@\S+\.\S+$/.test(form.email))      e.email   = 'Enter a valid email';
-    if (form.phone.replace(/\D/g,'').length !== 10)    e.phone   = 'Enter a valid 10-digit number';
-    if (!form.college.trim())                          e.college = 'College is required';
-    if (!forceGender && !form.gender)                  e.gender  = 'Please select your gender';
+    if (!form.name.trim())                               e.name    = 'Name is required';
+    if (!form.email.trim())                              e.email   = 'Email is required';
+    else if (!/^\S+@\S+\.\S+$/.test(form.email))        e.email   = 'Enter a valid email';
+    if (form.phone.replace(/\D/g,'').length !== 10)      e.phone   = 'Enter a valid 10-digit number';
+    if (!form.college.trim())                            e.college = 'College is required';
+    if (!forceGender && !form.gender)                    e.gender  = 'Please select your gender';
     setFieldErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -135,12 +135,12 @@ function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
     setError('');
     try {
       await signUp({
+        name:    form.name,
         email:   form.email,
         phone:   form.phone,
-        pin:     val,
-        name:    form.name,
         college: form.college,
         gender:  forceGender || form.gender,
+        pin:     val,
       });
       setStep('done');
       setTimeout(() => { onSuccess?.(); onClose?.(); }, 1800);
@@ -171,19 +171,29 @@ function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
           <ErrorBanner msg={error} />
 
           <div className="space-y-3 mt-3">
-            <Field label="Full Name" icon={<User size={15} />}
+            <Field
+              label="Full Name" icon={<User size={15} />}
               value={form.name} onChange={set('name')}
-              placeholder="As on college ID" error={fieldErrors.name} />
+              placeholder="As on college ID" error={fieldErrors.name}
+            />
 
-            <Field label="Email Address" icon={<Mail size={15} />} type="email"
+            {/* Email — collected for profile, not used to log in */}
+            <Field
+              label="Email Address" icon={<Mail size={15} />} type="email"
               value={form.email} onChange={set('email')}
-              placeholder="you@example.com" error={fieldErrors.email} />
+              placeholder="you@example.com" error={fieldErrors.email}
+            />
+            <p className="text-[11px] text-surface-400 -mt-1 pl-1">
+              Used for account recovery only. You'll log in with your mobile number.
+            </p>
 
             <PhoneField value={form.phone} onChange={set('phone')} error={fieldErrors.phone} />
 
-            <Field label="College" icon={<GraduationCap size={15} />}
+            <Field
+              label="College" icon={<GraduationCap size={15} />}
               value={form.college} onChange={set('college')}
-              placeholder="GNIOT, DTU, Jamia…" error={fieldErrors.college} />
+              placeholder="GNIOT, DTU, Jamia…" error={fieldErrors.college}
+            />
 
             {/* Gender */}
             {!forceGender && (
@@ -232,8 +242,10 @@ function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
           </div>
           <ErrorBanner msg={error} />
           <div className="mt-4"><PinPad value={pin} onChange={handlePinSet} /></div>
-          <button onClick={() => { setStep('details'); setPin(''); setError(''); }}
-            className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 text-sm text-surface-400 hover:text-surface-700 transition-colors mt-3 mx-auto active:text-surface-900">
+          <button
+            onClick={() => { setStep('details'); setPin(''); setError(''); }}
+            className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 text-sm text-surface-400 hover:text-surface-700 transition-colors mt-3 mx-auto"
+          >
             <ArrowLeft size={14} /> Back
           </button>
         </motion.div>
@@ -259,8 +271,10 @@ function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
               </div>
             )}
           </div>
-          <button onClick={() => { setStep('pin'); setConfirm(''); setError(''); }}
-            className="flex items-center gap-1.5 text-xs text-surface-400 hover:text-surface-600 transition-colors mt-5 mx-auto">
+          <button
+            onClick={() => { setStep('pin'); setConfirm(''); setError(''); }}
+            className="flex items-center gap-1.5 text-xs text-surface-400 hover:text-surface-600 transition-colors mt-5 mx-auto"
+          >
             <ArrowLeft size={12} /> Change PIN
           </button>
         </motion.div>
@@ -288,29 +302,21 @@ function SignUpFlow({ onSwitch, onSuccess, onClose, forceGender }) {
   );
 }
 
-// ─── SIGN IN: phone or email + PIN ───────────────────────────────────────────
+// ─── SIGN IN — mobile + PIN only ─────────────────────────────────────────────
 function SignInFlow({ onSwitch, onSuccess, onClose }) {
-  const { signInWithPhone, signInWithEmail } = useAuth();
+  const { signInWithPhone } = useAuth();
 
-  const [mode, setMode]   = useState('phone');  // 'phone' | 'email'
-  const [identifier, setIdentifier] = useState('');
-  const [pin, setPin]     = useState('');
-  const [step, setStep]   = useState('id');     // 'id' | 'pin'
+  const [phone, setPhone]     = useState('');
+  const [pin, setPin]         = useState('');
+  const [step, setStep]       = useState('phone');   // 'phone' | 'pin'
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
 
-  const handleIdContinue = () => {
+  const handlePhoneContinue = () => {
     setError('');
-    if (mode === 'phone') {
-      if (identifier.replace(/\D/g,'').length !== 10) {
-        setError('Enter a valid 10-digit mobile number.');
-        return;
-      }
-    } else {
-      if (!/^\S+@\S+\.\S+$/.test(identifier)) {
-        setError('Enter a valid email address.');
-        return;
-      }
+    if (phone.replace(/\D/g, '').length !== 10) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
     }
     setStep('pin');
   };
@@ -322,11 +328,7 @@ function SignInFlow({ onSwitch, onSuccess, onClose }) {
     setLoading(true);
     setError('');
     try {
-      if (mode === 'phone') {
-        await signInWithPhone({ phone: identifier, pin: val });
-      } else {
-        await signInWithEmail({ email: identifier, pin: val });
-      }
+      await signInWithPhone({ phone, pin: val });
       onSuccess?.();
       onClose?.();
     } catch (err) {
@@ -337,43 +339,28 @@ function SignInFlow({ onSwitch, onSuccess, onClose }) {
     }
   };
 
-  const formattedPhone = identifier.replace(/\D/g,'').replace(/(\d{5})(\d{5})/, '$1 $2');
+  const formatted = phone.replace(/(\d{5})(\d{1,5})/, '$1 $2');
 
   return (
     <AnimatePresence mode="wait">
 
-      {/* ── Identifier step ── */}
-      {step === 'id' && (
-        <motion.div key="id"
+      {/* ── Phone step ── */}
+      {step === 'phone' && (
+        <motion.div key="phone"
           initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="text-center mb-5">
             <h2 className="text-2xl font-black text-surface-950">Welcome back</h2>
-            <p className="text-surface-400 text-sm mt-1">Log in with mobile or email</p>
-          </div>
-
-          {/* Mode toggle */}
-          <div className="flex gap-1 bg-surface-100 rounded-2xl p-1 mb-4">
-            {[['phone', '📱 Mobile'], ['email', '✉️ Email']].map(([m, label]) => (
-              <button key={m} onClick={() => { setMode(m); setIdentifier(''); setError(''); }}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-200
-                  ${mode === m ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'}`}
-              >{label}</button>
-            ))}
+            <p className="text-surface-400 text-sm mt-1">Enter your registered mobile number</p>
           </div>
 
           <ErrorBanner msg={error} />
 
           <div className="space-y-4 mt-3">
-            {mode === 'phone' ? (
-              <PhoneField value={identifier} onChange={setIdentifier} />
-            ) : (
-              <Field label="Email Address" icon={<Mail size={15} />} type="email"
-                value={identifier} onChange={setIdentifier} placeholder="you@example.com" />
-            )}
+            <PhoneField value={phone} onChange={setPhone} />
 
-            <Button fullWidth size="lg" onClick={handleIdContinue}>
+            <Button fullWidth size="lg" onClick={handlePhoneContinue}>
               Continue
             </Button>
           </div>
@@ -396,13 +383,14 @@ function SignInFlow({ onSwitch, onSuccess, onClose }) {
         >
           <div className="text-center mb-6">
             <h2 className="text-2xl font-black text-surface-950">Enter your PIN</h2>
-            <p className="text-surface-400 text-sm mt-1">
-              {mode === 'phone'
-                ? `+91 ${formattedPhone}`
-                : identifier}
+            <p className="text-surface-400 text-sm mt-1 flex items-center justify-center gap-1.5">
+              <Phone size={13} className="text-brand-500" />
+              +91 {formatted}
             </p>
           </div>
+
           <ErrorBanner msg={error} />
+
           <div className="mt-4">
             <PinPad value={pin} onChange={handlePinEntry} disabled={loading} />
             {loading && (
@@ -412,10 +400,12 @@ function SignInFlow({ onSwitch, onSuccess, onClose }) {
               </div>
             )}
           </div>
-          <button onClick={() => { setStep('id'); setPin(''); setError(''); }}
-            className="flex items-center gap-1.5 text-xs text-surface-400 hover:text-surface-600 transition-colors mt-5 mx-auto">
-            <ArrowLeft size={12} />
-            {mode === 'phone' ? 'Change number' : 'Change email'}
+
+          <button
+            onClick={() => { setStep('phone'); setPin(''); setError(''); }}
+            className="flex items-center gap-1.5 text-xs text-surface-400 hover:text-surface-600 transition-colors mt-5 mx-auto"
+          >
+            <ArrowLeft size={12} /> Change number
           </button>
         </motion.div>
       )}
@@ -453,14 +443,14 @@ export default function AuthModal({ open, onClose, defaultTab = 'login', onSucce
           className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          {/* Drag handle */}
+          {/* Drag handle (mobile) */}
           <div className="sm:hidden flex justify-center pt-3">
             <div className="w-10 h-1 bg-surface-200 rounded-full" />
           </div>
 
-          {/* Close button — 44×44 touch target */}
+          {/* Close */}
           <button onClick={handleClose}
-            className="absolute top-3 right-3 w-11 h-11 rounded-full bg-surface-100 hover:bg-surface-200 flex items-center justify-center text-surface-500 transition-colors z-10 active:bg-surface-200">
+            className="absolute top-3 right-3 w-11 h-11 rounded-full bg-surface-100 hover:bg-surface-200 flex items-center justify-center text-surface-500 transition-colors z-10">
             <X size={18} />
           </button>
 
@@ -485,11 +475,11 @@ export default function AuthModal({ open, onClose, defaultTab = 'login', onSucce
           </div>
 
           {/* Content */}
-          <div className="px-5 pb-6 pt-4 overflow-y-auto" style={{ maxHeight: 'min(75vh, 600px)' }}>
+          <div className="px-5 pb-6 pt-4 overflow-y-auto" style={{ maxHeight: 'min(75vh, 620px)' }}>
             <AnimatePresence mode="wait">
               {tab === 'login'
-                ? <SignInFlow key="login"    onSwitch={() => setTab('register')} onSuccess={onSuccess} onClose={handleClose} />
-                : <SignUpFlow key="register" onSwitch={() => setTab('login')}    onSuccess={onSuccess} onClose={handleClose} forceGender={forceGender} />
+                ? <SignInFlow    key="login"    onSwitch={() => setTab('register')} onSuccess={onSuccess} onClose={handleClose} />
+                : <SignUpFlow    key="register" onSwitch={() => setTab('login')}    onSuccess={onSuccess} onClose={handleClose} forceGender={forceGender} />
               }
             </AnimatePresence>
           </div>

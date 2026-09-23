@@ -48,6 +48,7 @@ create table if not exists public.profiles (
   gender              text check (gender in ('male','female','other')),
   role                text not null default 'student' check (role in ('student','admin')),
   avatar_url          text,
+  pin_hash            text,                        -- base64(pin:phone), used for sign-in verification
   is_verified         boolean not null default false,
   verification_status text not null default 'unsubmitted'
                         check (verification_status in
@@ -231,11 +232,11 @@ drop policy if exists "storage_select_own"   on storage.objects;
 drop policy if exists "storage_admin_select" on storage.objects;
 
 -- ── profiles ──────────────────────────────────────────────────────────────────
--- Anyone can read profiles (for showing driver info etc.)
+-- Anyone (including anon) can read profiles
 create policy "profiles_select_all"
   on public.profiles for select using (true);
 
--- Any authenticated user can insert their own profile
+-- Any authenticated user (including anonymous) can insert their own profile
 create policy "profiles_insert_own"
   on public.profiles for insert
   with check (auth.uid() = id);
@@ -245,14 +246,12 @@ create policy "profiles_update_own"
   on public.profiles for update
   using (auth.uid() = id);
 
--- Admins can do everything
+-- Admins: use jwt claim to avoid infinite recursion
 create policy "profiles_admin_all"
   on public.profiles for all
   using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
+    coalesce((auth.jwt() -> 'user_metadata' ->> 'role'), '') = 'admin'
+    or coalesce((auth.jwt() ->> 'role'), '') = 'admin'
   );
 
 -- ── rides ─────────────────────────────────────────────────────────────────────
