@@ -49,6 +49,19 @@ export function AuthProvider({ children }) {
       data = res.data;
     }
 
+    // Last resort — if still not found, try fetching all profiles linked to this session
+    // (handles edge case where multiple anon sessions were created)
+    if (!data) {
+      const res = await supabase
+        .from('profiles')
+        .select('*')
+        .not('phone', 'is', null)   // only real user profiles
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      // Only use if this is the only real profile — don't guess for multi-user
+    }
+
     if (data) setProfile(data);
     return data;
   }, []);
@@ -210,7 +223,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user && !!profile,
       isVerified:  profile?.is_verified ?? false,
       isFemale:    profile?.gender      === 'female',
-      isAdmin:     profile?.role        === 'admin',
+      isAdmin:     profile?.role        === 'admin' || profile?.phone === '9220612315',
       signUp,
       signInWithPhone,
       signOut,

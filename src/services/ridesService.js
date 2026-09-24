@@ -137,3 +137,59 @@ export async function getMyOfferedRides(driverId) {
   if (error) throw error;
   return data;
 }
+
+// ─── Auto-expire rides whose date+time has passed ─────────────────────────────
+// Called on app load — marks rides as 'completed' if their scheduled time passed
+export async function expireOldRides() {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+
+    // Mark rides as completed if:
+    //   date < today  OR  (date = today AND time has passed)
+    // We do two separate updates for simplicity
+
+    // 1. Rides from past dates
+    await supabase
+      .from('rides')
+      .update({ status: 'completed' })
+      .eq('status', 'upcoming')
+      .lt('date', today);
+
+    // 2. Rides from today that have already departed (time < now)
+    // Supabase doesn't support time comparison natively so fetch and filter
+    const { data: todayRides } = await supabase
+      .from('rides')
+      .select('id, time')
+      .eq('status', 'upcoming')
+      .eq('date', today);
+
+    if (todayRides?.length) {
+      const expiredIds = todayRides
+        .filter(r => {
+          // Convert "8:00 AM" / "8:00 PM" to 24h for comparison
+          const match = r.time?.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return false;
+          let [, h, m, period] = match;
+          h = parseInt(h, 10);
+          m = parseInt(m, 10);
+          if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+          if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+          const rideMinutes = h * 60 + m;
+          const nowMinutes  = now.getHours() * 60 + now.getMinutes();
+          return nowMinutes > rideMinutes + 30; // 30-min grace period
+        })
+        .map(r => r.id);
+
+      if (expiredIds.length) {
+        await supabase
+          .from('rides')
+          .update({ status: 'completed' })
+          .in('id', expiredIds);
+      }
+    }
+  } catch {
+    // Silently ignore — best-effort cleanup
+  }
+}

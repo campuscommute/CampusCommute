@@ -9,11 +9,10 @@ import Avatar from '../ui/Avatar';
 import Button from '../ui/Button';
 
 const navLinks = [
-  { label: 'Find a Ride',  href: '/find-ride' },
-  { label: 'Offer a Ride', href: '/offer-ride' },
-  { label: 'Women Only',   href: '/women-only' },
-  { label: 'Messages',     href: '/messages'   },
-  { label: 'Safety',       href: '/safety'     },
+  { label: 'Find a Ride',  href: '/find-ride'   },
+  { label: 'Offer a Ride', href: '/offer-ride'  },
+  { label: 'Women Only',   href: '/women-only'  },
+  { label: 'Safety',       href: '/safety'      },
   { label: 'How It Works', href: '/how-it-works' },
 ];
 
@@ -99,21 +98,30 @@ export default function Navbar() {
                 `}
               >
                 {link.label}
-                {link.href === '/messages' && unread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-brand-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unread > 9 ? '9+' : unread}
-                  </span>
-                )}
               </Link>
             ))}
           </nav>
 
-          {/* Desktop right — auth */}
+          {/* Desktop right — messages icon + auth */}
           <div className="hidden md:flex items-center gap-2 flex-shrink-0">
             {loading ? (
               <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
             ) : isAuthenticated ? (
               <>
+                {/* Dedicated Messages icon */}
+                <Link
+                  to="/messages"
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-100 transition-colors text-surface-500 hover:text-brand-600"
+                  title="Messages"
+                >
+                  <MessageCircle size={20} />
+                  {unread > 0 && (
+                    <span className="absolute top-0.5 right-0.5 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                      {unread > 9 ? '9+' : unread}
+                    </span>
+                  )}
+                </Link>
+
                 <motion.button
                   onClick={() => navigate('/dashboard')}
                   whileHover={{ scale: 1.03 }}
