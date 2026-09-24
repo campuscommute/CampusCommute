@@ -1,7 +1,32 @@
 import { supabase } from '../lib/supabase';
 
+// ─── Haversine distance (km) between two lat/lng points ───────────────────────
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R  = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ─── Search rides ─────────────────────────────────────────────────────────────
-export async function searchRides({ from, to, date, preference, sortBy = 'time' } = {}) {
+// Supports:
+//   - text search on from_label / to_label (fuzzy)
+//   - lat/lng based 10 km radius filter (applied client-side after fetch)
+//   - date, preference, sortBy filters
+export async function searchRides({
+  from, to,
+  fromLat, fromLng,   // optional — enables radius filter on pickup point
+  toLat, toLng,       // optional — enables radius filter on destination
+  date,
+  preference,
+  sortBy = 'time',
+  radiusKm = 10,
+} = {}) {
   let query = supabase
     .from('rides')
     .select(`
@@ -13,23 +38,42 @@ export async function searchRides({ from, to, date, preference, sortBy = 'time' 
     .eq('status', 'upcoming')
     .gt('available_seats', 0);
 
-  if (from)       query = query.ilike('from_label', `%${from}%`);
-  if (to)         query = query.ilike('to_label',   `%${to}%`);
+  // Text filters only when no coordinates are given
+  if (from && !fromLat) query = query.ilike('from_label', `%${from}%`);
+  if (to   && !toLat)   query = query.ilike('to_label',   `%${to}%`);
+
   if (preference) query = query.eq('preference', preference);
-  if (date)       query = query.eq('date', date);           // date is DATE column, pass as YYYY-MM-DD
-  else            query = query.gte('date', new Date().toISOString().split('T')[0]); // today onwards
+  if (date)       query = query.eq('date', date);
+  else            query = query.gte('date', new Date().toISOString().split('T')[0]);
 
   if (sortBy === 'price') query = query.order('price_per_seat', { ascending: true });
   else                    query = query.order('time', { ascending: true });
 
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+
+  let results = data ?? [];
+
+  // ── Radius filter: only apply when coordinates are provided ──────────────
+  if (fromLat && fromLng) {
+    results = results.filter(r => {
+      if (!r.from_lat || !r.from_lng) return true; // keep rides without coords
+      return haversineKm(fromLat, fromLng, r.from_lat, r.from_lng) <= radiusKm;
+    });
+  }
+  if (toLat && toLng) {
+    results = results.filter(r => {
+      if (!r.to_lat || !r.to_lng) return true;
+      return haversineKm(toLat, toLng, r.to_lat, r.to_lng) <= radiusKm;
+    });
+  }
+
+  return results;
 }
 
 // ─── Women-only rides ─────────────────────────────────────────────────────────
-export async function searchWomenOnlyRides({ from, to, date } = {}) {
-  return searchRides({ from, to, date, preference: 'women-only' });
+export async function searchWomenOnlyRides({ from, to, date, fromLat, fromLng, toLat, toLng } = {}) {
+  return searchRides({ from, to, date, fromLat, fromLng, toLat, toLng, preference: 'women-only' });
 }
 
 // ─── Get single ride ──────────────────────────────────────────────────────────

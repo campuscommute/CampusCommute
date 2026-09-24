@@ -8,8 +8,6 @@ import { useToast } from '../ui/Toast';
 import { requestBooking } from '../../services/bookingsService';
 import { useAuth } from '../../context/AuthContext';
 
-const OTP = '4827';
-
 function OTPDigit({ digit, index }) {
   return (
     <motion.div
@@ -195,6 +193,26 @@ export default function BookingModal({ ride, open, onClose }) {
                 View Ride
               </Button>
             </div>
+
+            {/* Chat with driver */}
+            {ride?.driver?.id && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="mt-3"
+              >
+                <Button
+                  fullWidth
+                  variant="ghost"
+                  size="md"
+                  onClick={() => { handleClose(); navigate(`/messages?userId=${ride.driver.id}`); }}
+                  className="text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100"
+                >
+                  💬 Chat with Driver
+                </Button>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

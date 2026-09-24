@@ -263,10 +263,6 @@ create policy "rides_insert_verified"
   on public.rides for insert
   with check (
     auth.uid() = driver_id
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_verified = true
-    )
   );
 
 create policy "rides_update_driver"

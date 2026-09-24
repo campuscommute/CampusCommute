@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight, Calendar, ChevronDown, Clock,
-  MapPin, Search, SlidersHorizontal, X
+  Search, SlidersHorizontal
 } from 'lucide-react';
 import { useState } from 'react';
 import { searchRides } from '../services/ridesService';
+import LocationInput from '../components/ui/LocationInput';
 import RideCard from '../components/rides/RideCard';
 import Button from '../components/ui/Button';
 import { RideCardSkeleton } from '../components/ui/Skeleton';
@@ -13,27 +14,6 @@ import RideDetailsModal from '../components/rides/RideDetailsModal';
 import { useToast } from '../components/ui/Toast';
 
 const FILTERS = ['All', 'Cheapest', 'Earliest', 'Women Only', 'Female Driver'];
-
-function SearchField({ label, icon, value, onChange, placeholder }) {
-  return (
-    <div className="flex-1 min-w-0">
-      <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">{label}</label>
-      <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500">{icon}</span>
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full pl-9 pr-4 py-3 rounded-2xl bg-surface-50 border border-surface-100
-                     text-surface-900 font-semibold placeholder:text-surface-300 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
-                     transition-all duration-200"
-        />
-      </div>
-    </div>
-  );
-}
 
 function SelectField({ label, icon, value, onChange, options }) {
   return (
@@ -59,8 +39,12 @@ function SelectField({ label, icon, value, onChange, options }) {
 
 export default function FindRidePage() {
   const toast = useToast();
-  const [from, setFrom] = useState('Okhla');
-  const [to, setTo] = useState('GNIOT');
+  const [from,    setFrom]    = useState('');
+  const [fromLat, setFromLat] = useState(null);
+  const [fromLng, setFromLng] = useState(null);
+  const [to,      setTo]      = useState('');
+  const [toLat,   setToLat]   = useState(null);
+  const [toLng,   setToLng]   = useState(null);
   const [date, setDate] = useState('Today');
   const [time, setTime] = useState('8:00 AM');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -74,8 +58,8 @@ export default function FindRidePage() {
   const [showingAll, setShowingAll] = useState(false);
 
   const swapLocations = () => {
-    setFrom(to);
-    setTo(from);
+    setFrom(to);    setFromLat(toLat);   setFromLng(toLng);
+    setTo(from);    setToLat(fromLat);   setToLng(fromLng);
   };
 
   const handleSearch = async () => {
@@ -89,7 +73,13 @@ export default function FindRidePage() {
         if (d === 'Tomorrow') { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split('T')[0]; }
         return null;
       };
-      const data = await searchRides({ from, to, date: resolveDate(date) });
+      const data = await searchRides({
+        from, to,
+        fromLat, fromLng,
+        toLat, toLng,
+        date: resolveDate(date),
+        radiusKm: 10,
+      });
       setResults(data);
     } catch (err) {
       toast(err.message || 'Search failed', 'error');
@@ -155,11 +145,11 @@ export default function FindRidePage() {
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             {/* From/To with swap */}
             <div className="flex flex-1 gap-2 items-end">
-              <SearchField
+              <LocationInput
                 label="From"
-                icon={<MapPin size={15} />}
                 value={from}
                 onChange={setFrom}
+                onSelect={({ label, lat, lng }) => { setFrom(label); setFromLat(lat); setFromLng(lng); }}
                 placeholder="Pickup location"
               />
               {/* Swap button */}
@@ -174,11 +164,11 @@ export default function FindRidePage() {
               >
                 <ArrowRight size={16} />
               </motion.button>
-              <SearchField
+              <LocationInput
                 label="To"
-                icon={<MapPin size={15} />}
                 value={to}
                 onChange={setTo}
+                onSelect={({ label, lat, lng }) => { setTo(label); setToLat(lat); setToLng(lng); }}
                 placeholder="Destination"
               />
             </div>
@@ -262,7 +252,7 @@ export default function FindRidePage() {
                   </p>
                   {showingAll
                     ? <span className="text-surface-400 text-sm">· All available rides</span>
-                    : <span className="text-surface-400 text-sm">· {from} → {to}</span>
+                    : <span className="text-surface-400 text-sm">· {from} → {to}{(fromLat || toLat) ? ' · within 10km' : ''}</span>
                   }
                   {showingAll && (
                     <button

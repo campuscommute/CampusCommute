@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight, Calendar, Car, CheckCircle, Clock,
-  MapPin, Users
+  Users
 } from 'lucide-react';
 import { useState } from 'react';
 import { createRide } from '../services/ridesService';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import LocationInput from '../components/ui/LocationInput';
 import ScrollReveal from '../components/ui/ScrollReveal';
 import { useToast } from '../components/ui/Toast';
 
@@ -14,8 +15,8 @@ export default function OfferRidePage() {
   const toast = useToast();
   const { user } = useAuth();
   const [form, setForm] = useState({
-    from: '',
-    to: '',
+    from: '', fromLat: null, fromLng: null,
+    to:   '', toLat:   null, toLng:   null,
     date: 'Today',
     time: '8:00 AM',
     seats: '3',
@@ -26,6 +27,13 @@ export default function OfferRidePage() {
   const [published, setPublished] = useState(false);
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const inputClass = `
+    w-full px-4 py-3 rounded-2xl bg-surface-50 border border-surface-100
+    text-surface-900 font-medium text-sm placeholder:text-surface-300
+    focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
+    transition-all duration-200
+  `;
 
   const handlePublish = async () => {
     if (!form.from || !form.to || !form.price) {
@@ -43,7 +51,11 @@ export default function OfferRidePage() {
       await createRide({
         driver_id:       user?.id,
         from_label:      form.from,
+        from_lat:        form.fromLat,
+        from_lng:        form.fromLng,
         to_label:        form.to,
+        to_lat:          form.toLat,
+        to_lng:          form.toLng,
         date:            resolveDate(form.date),
         time:            form.time,
         available_seats: parseInt(form.seats, 10),
@@ -98,18 +110,22 @@ export default function OfferRidePage() {
             >
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">From *</label>
-                  <div className="relative">
-                    <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500" />
-                    <input className={`${inputClass} pl-9`} placeholder="Pickup location" value={form.from} onChange={set('from')} />
-                  </div>
+                  <LocationInput
+                    label="From"
+                    value={form.from}
+                    onChange={v => setForm(f => ({ ...f, from: v }))}
+                    onSelect={({ label, lat, lng }) => setForm(f => ({ ...f, from: label, fromLat: lat, fromLng: lng }))}
+                    placeholder="Pickup location"
+                  />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">To *</label>
-                  <div className="relative">
-                    <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500" />
-                    <input className={`${inputClass} pl-9`} placeholder="Destination" value={form.to} onChange={set('to')} />
-                  </div>
+                  <LocationInput
+                    label="To"
+                    value={form.to}
+                    onChange={v => setForm(f => ({ ...f, to: v }))}
+                    onSelect={({ label, lat, lng }) => setForm(f => ({ ...f, to: label, toLat: lat, toLng: lng }))}
+                    placeholder="Destination"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">Date</label>
@@ -243,7 +259,7 @@ export default function OfferRidePage() {
 
               <Button variant="secondary" onClick={() => {
                 setPublished(false);
-                setForm({ from: '', to: '', date: 'Today', time: '8:00 AM', seats: '3', price: '', preference: 'everyone' });
+                setForm({ from: '', fromLat: null, fromLng: null, to: '', toLat: null, toLng: null, date: 'Today', time: '8:00 AM', seats: '3', price: '', preference: 'everyone' });
               }}>
                 Offer Another Ride
               </Button>
