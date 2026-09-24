@@ -282,6 +282,10 @@ create policy "bookings_select_parties"
   on public.bookings for select
   using (
     auth.uid() = passenger_id
+    or exists (
+      select 1 from public.profiles where (id = auth.uid() or auth_id = auth.uid())
+        and id = (select driver_id from public.rides where id = ride_id)
+    )
     or auth.uid() = (select driver_id from public.rides where id = ride_id)
   );
 
@@ -289,10 +293,6 @@ create policy "bookings_insert_verified"
   on public.bookings for insert
   with check (
     auth.uid() = passenger_id
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_verified = true
-    )
   );
 
 create policy "bookings_update_parties"
