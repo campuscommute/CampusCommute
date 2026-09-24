@@ -11,6 +11,7 @@ import Button from '../ui/Button';
 const navLinks = [
   { label: 'Find a Ride',  href: '/find-ride'   },
   { label: 'Offer a Ride', href: '/offer-ride'  },
+  { label: 'My Rides',     href: '/my-rides'    },
   { label: 'Women Only',   href: '/women-only'  },
   { label: 'Safety',       href: '/safety'      },
   { label: 'How It Works', href: '/how-it-works' },
@@ -239,9 +240,6 @@ export default function Navbar() {
                   <>
                     <Link to="/dashboard" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       My Dashboard
-                    </Link>
-                    <Link to="/my-rides" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
-                      My Rides
                     </Link>
                     <Link to="/messages" className="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       <span className="flex items-center gap-2">

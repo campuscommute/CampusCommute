@@ -270,7 +270,7 @@ export default function MessagesPage() {
 
           {/* ── Sidebar — conversation list ── */}
           <div className={`
-            ${showChat ? 'hidden md:flex' : 'flex'}
+            ${activeId ? 'hidden md:flex' : 'flex'}
             flex-col w-full md:w-80 border-r border-surface-100 flex-shrink-0
           `}>
             {/* Sidebar header */}
@@ -317,7 +317,7 @@ export default function MessagesPage() {
           </div>
 
           {/* ── Chat window ── */}
-          <div className={`flex-1 flex flex-col ${showList && !showChat ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`flex-1 flex-col ${activeId ? 'flex' : 'hidden md:flex'}`}>
             {showChat && user && activeId ? (
               <ChatWindow
                 userId={myProfileId}

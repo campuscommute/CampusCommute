@@ -6,16 +6,11 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { searchRides } from '../services/ridesService';
 import { getMyBookings } from '../services/bookingsService';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import RideCard from '../components/rides/RideCard';
-import BookingModal from '../components/rides/BookingModal';
-import RideDetailsModal from '../components/rides/RideDetailsModal';
 import { useToast } from '../components/ui/Toast';
-import ScrollReveal from '../components/ui/ScrollReveal';
 
 function StatCard({ label, value, icon, color = 'brand', delay = 0 }) {
   return (
@@ -113,36 +108,22 @@ function UpcomingRideCard({ booking }) {
 }
 
 export default function DashboardPage() {
-  const navigate   = useNavigate();
-  const toast      = useToast();
+  const navigate = useNavigate();
+  const toast    = useToast();
   const { user, profile } = useAuth();
 
-  const [bookingRide,  setBookingRide]  = useState(null);
-  const [detailsRide,  setDetailsRide]  = useState(null);
   const [upcomingBooking, setUpcomingBooking] = useState(null);
-  const [suggestedRides,  setSuggestedRides]  = useState([]);
-  const [ridesLoading,    setRidesLoading]    = useState(true);
 
-  // Greeting based on time of day
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  // Fetch real data on mount
   useEffect(() => {
     if (!user) return;
-
-    // Fetch upcoming booking
-    getMyBookings(user.id, 'confirmed')
+    const profileId = profile?.id ?? user.id;
+    getMyBookings(profileId, 'confirmed')
       .then(data => setUpcomingBooking(data?.[0] ?? null))
       .catch(() => {});
-
-    // Fetch suggested rides
-    setRidesLoading(true);
-    searchRides({})
-      .then(data => setSuggestedRides((data ?? []).slice(0, 3)))
-      .catch(() => setSuggestedRides([]))
-      .finally(() => setRidesLoading(false));
-  }, [user]);
+  }, [user, profile]);
 
   const displayName = profile?.name ?? 'there';
   const isVerified  = profile?.is_verified ?? false;
@@ -152,24 +133,18 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-surface-50 pb-28 sm:pb-8">
-      {/* Top header bar */}
+      {/* Top header */}
       <div className="bg-white border-b border-surface-100 pt-20 pb-4 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar
-              name={displayName}
-              src={profile?.avatar_url}
-              size="md"
-              verified={isVerified}
-            />
+            <Avatar name={displayName} src={profile?.avatar_url} size="md" verified={isVerified} />
             <div>
               <p className="text-xs text-surface-400 font-medium">{greeting},</p>
               <p className="font-bold text-surface-900">{displayName.split(' ')[0]}</p>
             </div>
           </div>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
             onClick={() => toast('No new notifications', 'info')}
             className="relative w-10 h-10 rounded-2xl bg-surface-50 border border-surface-100 flex items-center justify-center text-surface-500 hover:text-surface-700 transition-colors"
           >
@@ -179,29 +154,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
           <motion.button
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }} whileHover={{ y: -2 }}
             onClick={() => navigate('/find-ride')}
-            className="bg-brand-600 rounded-3xl p-4 text-left group hover:bg-brand-700 transition-colors"
+            className="bg-brand-600 rounded-3xl p-4 text-left hover:bg-brand-700 transition-colors"
           >
             <MapPin size={22} className="text-white mb-3" />
             <p className="font-bold text-white text-sm">Find a Ride</p>
             <p className="text-white/60 text-xs mt-0.5">Search available rides</p>
           </motion.button>
           <motion.button
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }} whileHover={{ y: -2 }}
             onClick={() => navigate('/offer-ride')}
-            className="bg-white rounded-3xl p-4 text-left card-shadow border border-surface-100 group hover:border-brand-200 transition-colors"
+            className="bg-white rounded-3xl p-4 text-left card-shadow border border-surface-100 hover:border-brand-200 transition-colors"
           >
             <Car size={22} className="text-brand-600 mb-3" />
             <p className="font-bold text-surface-900 text-sm">Offer a Ride</p>
@@ -209,17 +180,16 @@ export default function DashboardPage() {
           </motion.button>
         </div>
 
-        {/* Stats row */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <StatCard label="Total Rides" value={totalRides}          icon={<TrendingUp size={18} />} color="brand" delay={0.10} />
-          <StatCard label="Rating"      value={rating ? `${rating}★` : '—'} icon={<Star size={18} />}      color="amber" delay={0.15} />
-          <StatCard label="Verified"    value={isVerified ? '✓' : '✗'}      icon={<CheckCircle size={18} />} color="green" delay={0.20} />
+          <StatCard label="Total Rides" value={totalRides}                     icon={<TrendingUp size={18} />} color="brand" delay={0.10} />
+          <StatCard label="Rating"      value={rating ? `${rating}★` : '—'}    icon={<Star size={18} />}      color="amber" delay={0.15} />
+          <StatCard label="Verified"    value={isVerified ? '✓' : '✗'}         icon={<CheckCircle size={18} />} color="green" delay={0.20} />
         </div>
 
         {/* Verification banner */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22 }}
           className={`flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer transition-colors ${
             isVerified
@@ -228,9 +198,7 @@ export default function DashboardPage() {
           }`}
           onClick={() => navigate('/verification')}
         >
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-            isVerified ? 'bg-green-100' : 'bg-brand-100'
-          }`}>
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isVerified ? 'bg-green-100' : 'bg-brand-100'}`}>
             <GraduationCap size={18} className={isVerified ? 'text-green-600' : 'text-brand-600'} />
           </div>
           <div className="flex-1">
@@ -260,61 +228,28 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Suggested rides */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-surface-900 flex items-center gap-2">
-              <MapPin size={16} className="text-brand-500" />
-              Suggested for You
-            </h2>
-            <button
-              onClick={() => navigate('/find-ride')}
-              className="text-brand-600 text-sm font-semibold hover:text-brand-700 transition-colors flex items-center gap-1"
-            >
-              See all <ArrowRight size={14} />
-            </button>
-          </div>
-
-          {ridesLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white rounded-3xl h-32 animate-pulse card-shadow border border-surface-50" />
-              ))}
-            </div>
-          ) : suggestedRides.length > 0 ? (
-            <div className="space-y-4">
-              {suggestedRides.map((ride, i) => (
-                <RideCard
-                  key={ride.id}
-                  ride={ride}
-                  animIndex={i}
-                  onRequest={() => setBookingRide(ride)}
-                  onDetails={() => setDetailsRide(ride)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl p-8 text-center card-shadow border border-surface-100">
-              <div className="text-4xl mb-3">🚗</div>
-              <p className="font-bold text-surface-700 mb-1">No rides available yet</p>
-              <p className="text-surface-400 text-sm">Be the first to offer a ride!</p>
-            </div>
-          )}
-        </div>
+        {/* Quick links */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <button
+            onClick={() => navigate('/my-rides')}
+            className="bg-white rounded-2xl p-4 card-shadow border border-surface-50 text-left hover:border-brand-100 transition-colors"
+          >
+            <p className="font-bold text-surface-900 text-sm">My Rides</p>
+            <p className="text-surface-400 text-xs mt-0.5">View all your trips</p>
+          </button>
+          <button
+            onClick={() => navigate('/messages')}
+            className="bg-white rounded-2xl p-4 card-shadow border border-surface-50 text-left hover:border-brand-100 transition-colors"
+          >
+            <p className="font-bold text-surface-900 text-sm">Messages</p>
+            <p className="text-surface-400 text-xs mt-0.5">Chat with drivers</p>
+          </button>
+        </motion.div>
       </div>
-
-      {/* Modals */}
-      <RideDetailsModal
-        ride={detailsRide}
-        open={!!detailsRide}
-        onClose={() => setDetailsRide(null)}
-        onRequest={() => { setBookingRide(detailsRide); setDetailsRide(null); }}
-      />
-      <BookingModal
-        ride={bookingRide}
-        open={!!bookingRide}
-        onClose={() => setBookingRide(null)}
-      />
     </div>
   );
 }
