@@ -399,11 +399,26 @@ alter table public.messages enable row level security;
 
 create policy "messages_select_parties"
   on public.messages for select
-  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+  using (
+    auth.uid() = sender_id
+    or auth.uid() = receiver_id
+    or exists (
+      select 1 from public.profiles
+      where id in (sender_id, receiver_id)
+        and auth_id = auth.uid()
+    )
+  );
 
 create policy "messages_insert_own"
   on public.messages for insert
-  with check (auth.uid() = sender_id);
+  with check (
+    -- sender must be authenticated user either by profile.id or profile.auth_id
+    exists (
+      select 1 from public.profiles
+      where id = sender_id
+        and (id = auth.uid() or auth_id = auth.uid())
+    )
+  );
 
 create policy "messages_update_receiver"
   on public.messages for update

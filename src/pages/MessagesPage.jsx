@@ -222,6 +222,9 @@ export default function MessagesPage() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Use profile.id (stable) rather than user.id (anon session uid that may differ)
+  const myProfileId = profile?.id ?? user?.id;
+
   const [convos,      setConvos]      = useState([]);
   const [convosLoading, setConvosLoading] = useState(true);
   const [activeId,    setActiveId]    = useState(searchParams.get('userId') || null);
@@ -229,21 +232,19 @@ export default function MessagesPage() {
 
   // Load conversation list
   useEffect(() => {
-    if (!user) return;
+    if (!myProfileId) return;
     setConvosLoading(true);
-    getConversations(user.id)
-      .then(data => setConvos(data.map(c => ({ ...c, myId: user.id }))))
+    getConversations(myProfileId)
+      .then(data => setConvos(data.map(c => ({ ...c, myId: myProfileId }))))
       .catch(() => toast('Could not load conversations', 'error'))
       .finally(() => setConvosLoading(false));
-  }, [user]);
+  }, [myProfileId]);
 
   // Load other user's profile when activeId changes
   useEffect(() => {
     if (!activeId) { setOtherProfile(null); return; }
-    // Check if already in convo list
     const existing = convos.find(c => c.other?.id === activeId);
     if (existing?.other) { setOtherProfile(existing.other); return; }
-    // Fetch from service
     getProfile(activeId)
       .then(setOtherProfile)
       .catch(() => {});
@@ -319,7 +320,7 @@ export default function MessagesPage() {
           <div className={`flex-1 flex flex-col ${showList && !showChat ? 'hidden md:flex' : 'flex'}`}>
             {showChat && user && activeId ? (
               <ChatWindow
-                userId={user.id}
+                userId={myProfileId}
                 otherId={activeId}
                 otherProfile={otherProfile}
                 onBack={closeConvo}

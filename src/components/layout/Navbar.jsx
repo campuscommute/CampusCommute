@@ -151,24 +151,39 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMenuOpen(v => !v)}
-            className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-100 transition-colors text-surface-700"
-            aria-label="Toggle menu"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={menuOpen ? 'close' : 'open'}
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.15 }}
+          {/* Mobile — Messages icon + hamburger */}
+          <div className="md:hidden flex items-center gap-1">
+            {isAuthenticated && (
+              <Link
+                to="/messages"
+                className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-100 transition-colors text-surface-600"
               >
-                {menuOpen ? <X size={22} /> : <Menu size={22} />}
-              </motion.span>
-            </AnimatePresence>
-          </button>
+                <MessageCircle size={22} />
+                {unread > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </Link>
+            )}
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-100 transition-colors text-surface-700"
+              aria-label="Toggle menu"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={menuOpen ? 'close' : 'open'}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {menuOpen ? <X size={22} /> : <Menu size={22} />}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          </div>
         </div>
       </header>
 
