@@ -351,6 +351,39 @@ create policy "storage_admin_select"
   );
 
 -- ============================================================
+--  MESSAGES
+-- ============================================================
+
+create table if not exists public.messages (
+  id           uuid primary key default uuid_generate_v4(),
+  booking_id   uuid references public.bookings(id) on delete cascade,
+  sender_id    uuid not null references public.profiles(id) on delete cascade,
+  receiver_id  uuid not null references public.profiles(id) on delete cascade,
+  content      text not null check (char_length(content) between 1 and 1000),
+  read         boolean default false,
+  created_at   timestamptz default now()
+);
+
+create index if not exists messages_booking_idx  on public.messages(booking_id);
+create index if not exists messages_sender_idx   on public.messages(sender_id);
+create index if not exists messages_receiver_idx on public.messages(receiver_id);
+create index if not exists messages_created_idx  on public.messages(created_at desc);
+
+alter table public.messages enable row level security;
+
+create policy "messages_select_parties"
+  on public.messages for select
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+create policy "messages_insert_own"
+  on public.messages for insert
+  with check (auth.uid() = sender_id);
+
+create policy "messages_update_receiver"
+  on public.messages for update
+  using (auth.uid() = receiver_id);
+
+-- ============================================================
 --  WOMEN-ONLY RIDES VIEW
 -- ============================================================
 

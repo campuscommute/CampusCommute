@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion';
-import { Car, Home, List, MapPin, User } from 'lucide-react';
+import { Car, Home, MessageCircle, MapPin, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',  label: 'Home',    icon: Home   },
-  { href: '/find-ride',  label: 'Find',    icon: MapPin  },
-  { href: '/offer-ride', label: 'Offer',   icon: Car    },
-  { href: '/my-rides',   label: 'My Rides', icon: List  },
-  { href: '/profile',    label: 'Profile', icon: User   },
+  { href: '/dashboard',  label: 'Home',     icon: Home          },
+  { href: '/find-ride',  label: 'Find',     icon: MapPin        },
+  { href: '/offer-ride', label: 'Offer',    icon: Car           },
+  { href: '/messages',   label: 'Messages', icon: MessageCircle },
+  { href: '/profile',    label: 'Profile',  icon: User          },
 ];
 
 export default function BottomNav() {
   const location = useLocation();
 
-  const appPaths = ['/dashboard', '/find-ride', '/offer-ride', '/my-rides', '/profile', '/live-ride', '/verification'];
+  const appPaths = ['/dashboard', '/find-ride', '/offer-ride', '/my-rides', '/messages', '/profile', '/live-ride', '/verification'];
   const show = appPaths.some(p => location.pathname.startsWith(p));
   if (!show) return null;
 

@@ -71,8 +71,8 @@ function RideRow({ booking, index }) {
   };
 
   const handleContactDriver = () => {
-    if (driver?.phone) {
-      window.open(`tel:${driver.phone}`, '_self');
+    if (driver?.id) {
+      navigate(`/messages?userId=${driver.id}`);
     } else {
       toast("Driver's contact is not available", 'info');
     }

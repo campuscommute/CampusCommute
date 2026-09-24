@@ -18,6 +18,7 @@ import AdminPage from './pages/AdminPage';
 import SafetyPage from './pages/SafetyPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import WomenOnlyPage from './pages/WomenOnlyPage';
+import MessagesPage from './pages/MessagesPage';
 
 // ─── Pages that hide the top navbar ─────────────────────────────────────────
 const FULLSCREEN_PAGES = ['/live-ride'];
@@ -106,6 +107,10 @@ function AppRoutes() {
     {
       path: '/profile',
       element: <PageWrapper><ProtectedRoute><ProfilePage /></ProtectedRoute></PageWrapper>,
+    },
+    {
+      path: '/messages',
+      element: <PageWrapper><ProtectedRoute><MessagesPage /></ProtectedRoute></PageWrapper>,
     },
     {
       path: '/verification',

@@ -203,6 +203,9 @@ export default function Navbar() {
                     <Link to="/my-rides" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       My Rides
                     </Link>
+                    <Link to="/messages" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
+                      Messages
+                    </Link>
                     <Link to="/profile" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       Profile
                     </Link>
