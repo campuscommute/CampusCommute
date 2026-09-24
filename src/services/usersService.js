@@ -40,9 +40,14 @@ export async function uploadAvatar(userId, file) {
 
 // ─── Submit verification docs ─────────────────────────────────────────────────
 export async function submitVerification(userId, { college, enrollmentNo, collegeIdFile, selfieFile }) {
+  // Get current auth session uid (may differ from profile.id when using auth_id)
+  const { data: { session } } = await supabase.auth.getSession();
+  const authUid = session?.user?.id ?? userId;
+
   const upload = async (file, folder) => {
     const ext  = file.name.split('.').pop();
-    const path = `${folder}/${userId}-${Date.now()}.${ext}`;
+    // Use authUid as folder name so storage RLS (auth.uid() = folder) passes
+    const path = `${folder}/${authUid}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage
       .from('campus-commute')
       .upload(path, file, { upsert: true });
@@ -61,13 +66,26 @@ export async function submitVerification(userId, { college, enrollmentNo, colleg
     ...(selfieUrl    && { selfie_url:     selfieUrl    }),
   };
 
-  const { data, error } = await supabase
+  // Update by id first, fall back to auth_id match
+  let { data, error } = await supabase
     .from('profiles')
     .update(updates)
     .eq('id', userId)
     .select()
     .single();
-  if (error) throw error;
+
+  if (error || !data) {
+    // Try updating via auth_id (user signed in on new device)
+    const res = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('auth_id', authUid)
+      .select()
+      .single();
+    if (res.error) throw res.error;
+    data = res.data;
+  }
+
   return data;
 }
 

@@ -329,11 +329,27 @@ create policy "storage_insert_auth"
     and auth.role() = 'authenticated'
   );
 
+-- Allow users to read their own uploaded files (match by uid or auth_id)
 create policy "storage_select_own"
   on storage.objects for select
   using (
     bucket_id = 'campus-commute'
-    and auth.uid()::text = (storage.foldername(name))[1]
+    and (
+      auth.uid()::text = (storage.foldername(name))[1]
+      or exists (
+        select 1 from public.profiles
+        where auth_id = auth.uid()
+          and id::text = (storage.foldername(name))[1]
+      )
+    )
+  );
+
+-- Allow update/upsert on own storage objects
+create policy "storage_update_own"
+  on storage.objects for update
+  using (
+    bucket_id = 'campus-commute'
+    and auth.role() = 'authenticated'
   );
 
 create policy "storage_admin_select"
