@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, MessageCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getUnreadCount } from '../../services/messagesService';
 import AuthModal from '../auth/AuthModal';
 import Avatar from '../ui/Avatar';
 import Button from '../ui/Button';
@@ -11,7 +12,8 @@ const navLinks = [
   { label: 'Find a Ride',  href: '/find-ride' },
   { label: 'Offer a Ride', href: '/offer-ride' },
   { label: 'Women Only',   href: '/women-only' },
-  { label: 'Safety',       href: '/safety' },
+  { label: 'Messages',     href: '/messages'   },
+  { label: 'Safety',       href: '/safety'     },
   { label: 'How It Works', href: '/how-it-works' },
 ];
 
@@ -23,12 +25,22 @@ export default function Navbar() {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { isAuthenticated, profile, user, signOut, loading } = useAuth();
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 24);
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
   }, []);
+
+  // Poll unread count every 30s when authenticated
+  useEffect(() => {
+    if (!user) { setUnread(0); return; }
+    const fetch = () => getUnreadCount(user.id).then(setUnread).catch(() => {});
+    fetch();
+    const interval = setInterval(fetch, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
@@ -79,7 +91,7 @@ export default function Navbar() {
                 key={link.href}
                 to={link.href}
                 className={`
-                  px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                  relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
                   ${isActive(link.href)
                     ? 'text-brand-600 bg-brand-50'
                     : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100'
@@ -87,6 +99,11 @@ export default function Navbar() {
                 `}
               >
                 {link.label}
+                {link.href === '/messages' && unread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-brand-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
               </Link>
             ))}
           </nav>
@@ -203,8 +220,16 @@ export default function Navbar() {
                     <Link to="/my-rides" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       My Rides
                     </Link>
-                    <Link to="/messages" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
-                      Messages
+                    <Link to="/messages" className="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
+                      <span className="flex items-center gap-2">
+                        <MessageCircle size={16} className="text-brand-500" />
+                        Messages
+                      </span>
+                      {unread > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 bg-brand-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
                     </Link>
                     <Link to="/profile" className="block px-4 py-3 rounded-2xl text-sm font-medium text-surface-700 hover:bg-surface-50 transition-colors">
                       Profile

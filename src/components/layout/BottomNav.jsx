@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { Car, Home, MessageCircle, MapPin, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { getUnreadCount } from '../../services/messagesService';
 
 const NAV_ITEMS = [
   { href: '/dashboard',  label: 'Home',     icon: Home          },
@@ -12,6 +15,16 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const { user } = useAuth();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!user) { setUnread(0); return; }
+    const fetch = () => getUnreadCount(user.id).then(setUnread).catch(() => {});
+    fetch();
+    const interval = setInterval(fetch, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const appPaths = ['/dashboard', '/find-ride', '/offer-ride', '/my-rides', '/messages', '/profile', '/live-ride', '/verification'];
   const show = appPaths.some(p => location.pathname.startsWith(p));
@@ -46,6 +59,12 @@ export default function BottomNav() {
                     className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-600"
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
+                )}
+                {/* Unread badge on Messages */}
+                {href === '/messages' && unread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
                 )}
               </div>
               <span className={`text-[11px] font-semibold leading-none ${active ? 'text-brand-600' : 'text-surface-400'}`}>

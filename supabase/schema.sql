@@ -365,6 +365,20 @@ create index if not exists messages_sender_idx   on public.messages(sender_id);
 create index if not exists messages_receiver_idx on public.messages(receiver_id);
 create index if not exists messages_created_idx  on public.messages(created_at desc);
 
+-- ── Auto-delete messages older than 30 days ───────────────────────────────────
+-- Requires pg_cron extension. Enable in Supabase: Extensions → pg_cron → Enable
+-- Then run this separately in SQL Editor:
+--
+--   select cron.schedule(
+--     'delete-old-messages',
+--     '0 3 * * *',   -- every day at 3 AM
+--     $$delete from public.messages where created_at < now() - interval '30 days'$$
+--   );
+--
+-- If pg_cron is not available, this index speeds up the manual delete query:
+create index if not exists messages_ttl_idx on public.messages(created_at)
+  where created_at < now() - interval '30 days';
+
 alter table public.messages enable row level security;
 
 create policy "messages_select_parties"
