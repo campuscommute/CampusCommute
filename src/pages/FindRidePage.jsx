@@ -106,7 +106,7 @@ export default function FindRidePage() {
     if (activeFilter === 'Earliest') return true;
     return true;
   }).sort((a, b) => {
-    if (activeFilter === 'Cheapest') return a.price - b.price;
+    if (activeFilter === 'Cheapest') return (a.price_per_seat ?? a.price ?? 0) - (b.price_per_seat ?? b.price ?? 0);
     if (activeFilter === 'Earliest') return a.time.localeCompare(b.time);
     return 0;
   });

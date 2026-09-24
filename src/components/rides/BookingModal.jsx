@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, CheckCircle, Eye, EyeOff, Share2 } from 'lucide-react';
+import { ArrowRight, CheckCircle, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../ui/Modal';
@@ -85,15 +85,15 @@ export default function BookingModal({ ride, open, onClose }) {
             <div className="bg-surface-50 rounded-2xl p-4 mb-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-surface-900">
-                  <span>{ride.from}</span>
+                  <span>{ride.from ?? ride.from_label}</span>
                   <ArrowRight size={14} className="text-brand-500" />
-                  <span>{ride.to}</span>
+                  <span>{ride.to ?? ride.to_label}</span>
                 </div>
-                <span className="font-black text-brand-600 text-lg">₹{ride.price}</span>
+                <span className="font-black text-brand-600 text-lg">₹{ride.price_per_seat ?? ride.price}</span>
               </div>
               <div className="flex items-center gap-4 text-xs text-surface-500 font-medium">
                 <span>🕐 {ride.time}</span>
-                <span>📅 {ride.date}</span>
+                <span>📅 {ride.date ? new Date(ride.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ride.date}</span>
                 <span>👤 {ride.driver?.name}</span>
               </div>
             </div>

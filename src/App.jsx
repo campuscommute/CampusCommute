@@ -25,7 +25,7 @@ const FULLSCREEN_PAGES = ['/live-ride'];
 // ─── Route guard: requires auth, shows modal if not logged in ────────────────
 function ProtectedRoute({ children, requireAdmin = false }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(true);
 
   if (loading) {
     return (
@@ -45,7 +45,7 @@ function ProtectedRoute({ children, requireAdmin = false }) {
           <p className="text-surface-400 text-sm mt-2">You need an account to access this page.</p>
         </div>
         <AuthModal
-          open
+          open={authOpen}
           onClose={() => setAuthOpen(false)}
           defaultTab="login"
           onSuccess={() => setAuthOpen(false)}
@@ -87,7 +87,7 @@ function AppRoutes() {
     // Public
     { path: '/',            element: <PageWrapper><LandingPage /></PageWrapper> },
     { path: '/find-ride',   element: <PageWrapper><FindRidePage /></PageWrapper> },
-    { path: '/offer-ride',  element: <PageWrapper><OfferRidePage /></PageWrapper> },
+    { path: '/offer-ride',  element: <PageWrapper><ProtectedRoute><OfferRidePage /></ProtectedRoute></PageWrapper> },
     { path: '/features',    element: <PageWrapper><FeaturesPage /></PageWrapper> },
     { path: '/safety',      element: <PageWrapper><SafetyPage /></PageWrapper> },
     { path: '/how-it-works',element: <PageWrapper><HowItWorksPage /></PageWrapper> },

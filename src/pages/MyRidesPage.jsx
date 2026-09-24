@@ -227,7 +227,7 @@ export default function MyRidesPage() {
       .then(data => setBookings(data ?? []))
       .catch(err => toast(err.message || 'Could not load rides', 'error'))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, toast]);
 
   // Map tab labels to booking statuses
   const tabStatuses = {
