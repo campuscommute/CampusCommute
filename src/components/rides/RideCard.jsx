@@ -11,9 +11,20 @@ export default function RideCard({
   compact = false,
   animIndex = 0,
 }) {
-  const { driver, from, to, time, date, seats, price, preference, rating } = ride;
-  const driverRating = driver?.rating || rating;
-  const isWomenOnly = preference === 'women-only';
+  // Support both mock data (snake_case flat) and Supabase data (nested driver object)
+  const driver      = ride.driver;
+  const from        = ride.from_label  ?? ride.from;
+  const to          = ride.to_label    ?? ride.to;
+  const time        = ride.time;
+  const date        = ride.date
+    ? new Date(ride.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : ride.date;
+  const seats       = ride.available_seats ?? ride.seats;
+  const price       = ride.price_per_seat  ?? ride.price;
+  const preference  = ride.preference;
+  const driverRating = driver?.rating ?? ride.rating;
+  const isVerified   = driver?.is_verified ?? driver?.verified ?? false;
+  const isWomenOnly  = preference === 'women-only';
 
   return (
     <motion.div
@@ -27,12 +38,12 @@ export default function RideCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <Avatar name={driver?.name} size="md" verified={driver?.verified} />
+          <Avatar name={driver?.name} size="md" verified={isVerified} />
           <div>
             <p className="font-semibold text-surface-900 text-sm leading-tight">{driver?.name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-xs text-surface-500">{driver?.college}</span>
-              {driver?.verified && (
+              {isVerified && (
                 <Badge variant="brand" className="text-[10px] py-0 px-2">
                   🎓 Verified
                 </Badge>

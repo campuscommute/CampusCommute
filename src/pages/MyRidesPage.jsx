@@ -144,7 +144,7 @@ function RideRow({ booking, index }) {
             size="sm"
             className="flex-1"
             icon={<MapPin size={14} />}
-            onClick={() => navigate('/live-ride')}
+            onClick={() => navigate(`/live-ride?bookingId=${booking.id}`)}
           >
             Track Ride
           </Button>
@@ -167,7 +167,7 @@ function RideRow({ booking, index }) {
             size="sm"
             className="flex-1"
             icon={<Zap size={14} />}
-            onClick={() => navigate('/live-ride')}
+            onClick={() => navigate(`/live-ride?bookingId=${booking.id}`)}
           >
             View Live Ride
           </Button>

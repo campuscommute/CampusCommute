@@ -6,8 +6,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { searchWomenOnlyRides } from '../services/ridesService';
-import { mockRides } from '../data/mockData';
+import { searchWomenOnlyRides, createRide } from '../services/ridesService';
 import AuthModal from '../components/auth/AuthModal';
 import BookingModal from '../components/rides/BookingModal';
 import RideDetailsModal from '../components/rides/RideDetailsModal';
@@ -477,10 +476,11 @@ function RiderView({ onSwitchRole }) {
 // ─── Driver view ──────────────────────────────────────────────────────────────
 function DriverView({ onSwitchRole }) {
   const toast = useToast();
+  const { user } = useAuth();
   const [womenOnly, setWomenOnly]   = useState(true);
   const [published, setPublished]   = useState(false);
   const [loading, setLoading]       = useState(false);
-  const [form, setForm]             = useState({ from: '', to: '', time: '8:00 AM', price: '' });
+  const [form, setForm]             = useState({ from: '', to: '', time: '8:00 AM', price: '', date: 'Today' });
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const handlePublish = async () => {
@@ -488,10 +488,29 @@ function DriverView({ onSwitchRole }) {
       toast('Please fill in all fields', 'error');
       return;
     }
+    if (!user) {
+      toast('Please sign in to publish a ride', 'error');
+      return;
+    }
     setLoading(true);
     try {
-      // In production this calls createRide() from ridesService
-      await new Promise(r => setTimeout(r, 1000));
+      const resolveDate = (d) => {
+        if (d === 'Today')    return new Date().toISOString().split('T')[0];
+        if (d === 'Tomorrow') { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split('T')[0]; }
+        return new Date().toISOString().split('T')[0];
+      };
+      await createRide({
+        driver_id:       user.id,
+        from_label:      form.from,
+        to_label:        form.to,
+        date:            resolveDate(form.date),
+        time:            form.time,
+        available_seats: 3,
+        total_seats:     3,
+        price_per_seat:  parseFloat(form.price),
+        preference:      womenOnly ? 'women-only' : 'everyone',
+        status:          'upcoming',
+      });
       setPublished(true);
       toast('Women-only ride published!', 'success');
     } catch (err) {

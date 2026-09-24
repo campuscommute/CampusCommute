@@ -5,7 +5,6 @@ import {
   Shield, TrendingUp, Users, X, XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { adminReports, adminRides } from '../data/mockData';
 import {
   getAdminStats,
   getAllUsers,
@@ -323,49 +322,79 @@ function UsersPanel() {
 
 // ─── Rides panel ─────────────────────────────────────────────────────────────
 function RidesPanel() {
-  const statusColor = { active: 'success', upcoming: 'brand', completed: 'neutral' };
+  const toast = useToast();
+  const [rides, setRides] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('rides')
+      .select(`
+        id, from_label, to_label, date, time, price_per_seat,
+        available_seats, total_seats, status,
+        driver:profiles!rides_driver_id_fkey(name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (error) toast(error.message, 'error');
+        else setRides(data ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const statusColor = { active: 'success', upcoming: 'brand', completed: 'neutral', cancelled: 'danger' };
+
   return (
     <div>
       <h2 className="text-xl font-black text-surface-950 mb-4">All Rides</h2>
       <div className="bg-white rounded-3xl card-shadow border border-surface-50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-surface-100">
-                {['Driver', 'Route', 'Date', 'Time', 'Price', 'Passengers', 'Status'].map(h => (
-                  <th key={h} className="text-left px-4 py-3.5 text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+        {loading ? (
+          <div className="p-8 text-center text-surface-400 animate-pulse">Loading…</div>
+        ) : rides.length === 0 ? (
+          <div className="p-8 text-center text-surface-400">No rides yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-100">
+                  {['Driver', 'Route', 'Date', 'Time', 'Price', 'Seats', 'Status'].map(h => (
+                    <th key={h} className="text-left px-4 py-3.5 text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rides.map((ride, i) => (
+                  <motion.tr
+                    key={ride.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="border-b border-surface-50 last:border-0 hover:bg-surface-50/50 transition-colors"
+                  >
+                    <td className="px-4 py-3.5 font-semibold text-surface-900">{ride.driver?.name ?? '—'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="flex items-center gap-1 text-surface-700 font-medium">
+                        {ride.from_label} <ChevronRight size={12} className="text-surface-300" /> {ride.to_label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-surface-500 font-medium">
+                      {ride.date ? new Date(ride.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                    </td>
+                    <td className="px-4 py-3.5 text-surface-500 font-medium">{ride.time}</td>
+                    <td className="px-4 py-3.5 font-bold text-brand-600">₹{ride.price_per_seat}</td>
+                    <td className="px-4 py-3.5 text-surface-600">{ride.available_seats}/{ride.total_seats}</td>
+                    <td className="px-4 py-3.5">
+                      <Badge variant={statusColor[ride.status] || 'neutral'} dot={ride.status === 'active'}>
+                        {ride.status?.charAt(0).toUpperCase() + ride.status?.slice(1)}
+                      </Badge>
+                    </td>
+                  </motion.tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {adminRides.map((ride, i) => (
-                <motion.tr
-                  key={ride.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="border-b border-surface-50 last:border-0 hover:bg-surface-50/50 transition-colors"
-                >
-                  <td className="px-4 py-3.5 font-semibold text-surface-900">{ride.driver}</td>
-                  <td className="px-4 py-3.5">
-                    <span className="flex items-center gap-1 text-surface-700 font-medium">
-                      {ride.from} <ChevronRight size={12} className="text-surface-300" /> {ride.to}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-surface-500 font-medium">{ride.date}</td>
-                  <td className="px-4 py-3.5 text-surface-500 font-medium">{ride.time}</td>
-                  <td className="px-4 py-3.5 font-bold text-brand-600">₹{ride.price}</td>
-                  <td className="px-4 py-3.5 text-surface-600">{ride.passengers}/{ride.seats}</td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant={statusColor[ride.status] || 'neutral'} dot={ride.status === 'active'}>
-                      {ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
-                    </Badge>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -374,11 +403,34 @@ function RidesPanel() {
 // ─── Reports panel ────────────────────────────────────────────────────────────
 function ReportsPanel() {
   const toast = useToast();
-  const [reports, setReports] = useState(adminReports);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const statusColor = { resolved: 'success', reviewing: 'warning', escalated: 'danger' };
+  useEffect(() => {
+    supabase
+      .from('reports')
+      .select(`
+        id, type, description, status, created_at,
+        reporter:profiles!reports_reporter_id_fkey(name),
+        reported:profiles!reports_reported_user_id_fkey(name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (error) toast(error.message, 'error');
+        else setReports(data ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const handleResolve = (id) => {
+  const statusColor = { resolved: 'success', reviewing: 'warning', escalated: 'danger', open: 'neutral', dismissed: 'neutral' };
+
+  const handleResolve = async (id) => {
+    const { error } = await supabase
+      .from('reports')
+      .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) { toast(error.message, 'error'); return; }
     setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'resolved' } : r));
     toast('Report marked as resolved', 'success');
   };
@@ -386,48 +438,61 @@ function ReportsPanel() {
   return (
     <div>
       <h2 className="text-xl font-black text-surface-950 mb-4">Reports</h2>
-      <div className="space-y-4">
-        {reports.map((rep, i) => (
-          <motion.div
-            key={rep.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            className="bg-white rounded-3xl p-5 card-shadow border border-surface-50"
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  rep.type === 'Harassment' || rep.type === 'Unsafe Driving'
-                    ? 'bg-red-50 text-red-600'
-                    : 'bg-amber-50 text-amber-700'
-                }`}>
-                  {rep.type}
-                </span>
-                <span className="text-xs text-surface-400">{rep.date}</span>
+      {loading ? (
+        <div className="space-y-4">
+          {[1,2,3].map(i => <div key={i} className="bg-white rounded-3xl h-28 animate-pulse card-shadow border border-surface-50" />)}
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center card-shadow border border-surface-100">
+          <div className="text-4xl mb-3">✅</div>
+          <p className="font-bold text-surface-700">No reports yet</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {reports.map((rep, i) => (
+            <motion.div
+              key={rep.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              className="bg-white rounded-3xl p-5 card-shadow border border-surface-50"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    rep.type === 'Harassment' || rep.type === 'Unsafe Driving'
+                      ? 'bg-red-50 text-red-600'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {rep.type}
+                  </span>
+                  <span className="text-xs text-surface-400">
+                    {rep.created_at ? new Date(rep.created_at).toLocaleDateString('en-IN') : '—'}
+                  </span>
+                </div>
+                <Badge variant={statusColor[rep.status] || 'neutral'}>
+                  {rep.status?.charAt(0).toUpperCase() + rep.status?.slice(1)}
+                </Badge>
               </div>
-              <Badge variant={statusColor[rep.status] || 'neutral'}>
-                {rep.status.charAt(0).toUpperCase() + rep.status.slice(1)}
-              </Badge>
-            </div>
-            <p className="text-sm text-surface-700 mb-2 leading-relaxed">{rep.description}</p>
-            <div className="flex items-center gap-4 text-xs text-surface-400 mb-3">
-              <span>Reporter: <strong className="text-surface-600">{rep.reporter}</strong></span>
-              <span>Against: <strong className="text-surface-600">{rep.against}</strong></span>
-            </div>
-            {rep.status !== 'resolved' && (
-              <div className="flex gap-2">
-                <Button size="xs" onClick={() => handleResolve(rep.id)} icon={<CheckCircle size={12} />}>
-                  Mark Resolved
-                </Button>
-                <Button size="xs" variant="secondary" onClick={() => toast('Escalation coming soon', 'info')}>
-                  Escalate
-                </Button>
+              <p className="text-sm text-surface-700 mb-2 leading-relaxed">{rep.description}</p>
+              <div className="flex items-center gap-4 text-xs text-surface-400 mb-3">
+                <span>Reporter: <strong className="text-surface-600">{rep.reporter?.name ?? '—'}</strong></span>
+                <span>Against: <strong className="text-surface-600">{rep.reported?.name ?? '—'}</strong></span>
               </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
+              {rep.status !== 'resolved' && rep.status !== 'dismissed' && (
+                <div className="flex gap-2">
+                  <Button size="xs" onClick={() => handleResolve(rep.id)} icon={<CheckCircle size={12} />}>
+                    Mark Resolved
+                  </Button>
+                  <Button size="xs" variant="secondary" onClick={() => toast('Escalation: contact admin team', 'info')}>
+                    Escalate
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
