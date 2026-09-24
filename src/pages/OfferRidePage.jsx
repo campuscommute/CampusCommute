@@ -74,13 +74,6 @@ export default function OfferRidePage() {
     }
   };
 
-  const inputClass = `
-    w-full px-4 py-3 rounded-2xl bg-surface-50 border border-surface-100
-    text-surface-900 font-medium text-sm placeholder:text-surface-300
-    focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
-    transition-all duration-200
-  `;
-
   return (
     <div className="min-h-screen bg-surface-50 pt-20 pb-28 sm:pb-16">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
