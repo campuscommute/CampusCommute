@@ -95,7 +95,7 @@ export function AuthProvider({ children }) {
     if (anonErr) {
       if (anonErr.message?.toLowerCase().includes('anonymous')) {
         throw new Error(
-          'Enable anonymous sign-ins: Supabase Dashboard → Authentication → Configuration → Allow anonymous sign-ins → ON'
+          'Enable anonymous sign-ins: Supabase Dashboard → Authentication → Sign In / Providers → Anonymous → ON'
         );
       }
       throw new Error(anonErr.message);
@@ -129,7 +129,7 @@ export function AuthProvider({ children }) {
     if (cleanPhone.length !== 10) throw new Error('Enter a valid 10-digit mobile number.');
     if (!/^\d{4}$/.test(pin))     throw new Error('PIN must be 4 digits.');
 
-    // Fetch profile
+    // Fetch profile by phone
     const { data: prof, error: profErr } = await supabase
       .from('profiles')
       .select('id, phone, pin_hash')
@@ -139,39 +139,58 @@ export function AuthProvider({ children }) {
     if (profErr) throw new Error(profErr.message);
     if (!prof)   throw new Error('No account found with this number. Please sign up first.');
 
-    // Verify PIN
-    if (!prof.pin_hash)                              throw new Error('Account setup incomplete. Please sign up again.');
-    if (!verifyPin(pin, cleanPhone, prof.pin_hash))  throw new Error('Incorrect PIN. Please try again.');
+    // If pin_hash exists, verify PIN locally
+    if (prof.pin_hash) {
+      if (!verifyPin(pin, cleanPhone, prof.pin_hash)) {
+        throw new Error('Incorrect PIN. Please try again.');
+      }
+    }
+    // If pin_hash is null (legacy account), we allow sign-in and store hash after
 
-    // Check if current session already belongs to this user
+    // Check if current session already belongs to this profile
     const { data: { session: existing } } = await supabase.auth.getSession();
     if (existing?.user?.id === prof.id) {
+      // Already signed in as this user — refresh profile and return
       await fetchProfile(prof.id);
       return { session: existing, user: existing.user };
     }
 
-    // Sign out any stale session, then sign in anonymously and link to profile
+    // Sign out stale session
     await supabase.auth.signOut();
 
+    // Sign in anonymously to get a fresh session
     const { data: anonData, error: anonErr } = await supabase.auth.signInAnonymously();
     if (anonErr) throw new Error(anonErr.message);
 
-    // If the anon uid differs from the stored profile id, we need to
-    // update the profile row to the new anon uid (first-time sign-in on new device)
-    if (anonData.user.id !== prof.id) {
+    const newUid = anonData.user.id;
+
+    if (newUid !== prof.id) {
+      // Try to update the profile id to the new anon uid
       const { error: updateErr } = await supabase
         .from('profiles')
-        .update({ id: anonData.user.id })
-        .eq('id', prof.id);
+        .update({
+          id:       newUid,
+          // Also store pin_hash if it was missing (legacy account fix)
+          ...(prof.pin_hash ? {} : { pin_hash: hashPin(pin, cleanPhone) }),
+        })
+        .eq('phone', cleanPhone);  // use phone as stable key, not id
 
-      // If update fails (FK constraints etc.), link by fetching by phone again
       if (updateErr) {
-        // Fall back — just fetch by phone after linking
-        await fetchProfile(prof.id);
+        // FK constraint failure — profile id is referenced by bookings/rides
+        // Fall back: fetch profile by phone regardless of id mismatch
+        const { data: byPhone } = await supabase
+          .from('profiles').select('*').eq('phone', cleanPhone).maybeSingle();
+        if (byPhone) setProfile(byPhone);
       } else {
-        await fetchProfile(anonData.user.id);
+        await fetchProfile(newUid);
       }
     } else {
+      // Same uid — just update pin_hash if missing
+      if (!prof.pin_hash) {
+        await supabase.from('profiles')
+          .update({ pin_hash: hashPin(pin, cleanPhone) })
+          .eq('id', prof.id);
+      }
       await fetchProfile(prof.id);
     }
 

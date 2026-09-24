@@ -16,8 +16,8 @@ export async function searchRides({ from, to, date, preference, sortBy = 'time' 
   if (from)       query = query.ilike('from_label', `%${from}%`);
   if (to)         query = query.ilike('to_label',   `%${to}%`);
   if (preference) query = query.eq('preference', preference);
-  if (date)       query = query.gte('date', `${date}T00:00:00`).lte('date', `${date}T23:59:59`);
-  else            query = query.gte('date', new Date().toISOString());
+  if (date)       query = query.eq('date', date);           // date is DATE column, pass as YYYY-MM-DD
+  else            query = query.gte('date', new Date().toISOString().split('T')[0]); // today onwards
 
   if (sortBy === 'price') query = query.order('price_per_seat', { ascending: true });
   else                    query = query.order('time', { ascending: true });
