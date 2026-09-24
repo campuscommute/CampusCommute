@@ -89,7 +89,16 @@ export async function getUnreadCount(userId) {
   return count ?? 0;
 }
 
-// ─── Subscribe to new messages in a conversation (real-time) ─────────────────
+// ─── Cleanup messages older than 30 days (called on app load) ────────────────
+export async function cleanupOldMessages() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  await supabase
+    .from('messages')
+    .delete()
+    .lt('created_at', cutoff.toISOString());
+  // Silently ignore errors — cleanup is best-effort
+}
 export function subscribeToConversation(userId, otherId, onMessage) {
   return supabase
     .channel(`conversation:${[userId, otherId].sort().join('_')}`)
