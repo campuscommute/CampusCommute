@@ -71,6 +71,8 @@ export default function FindRidePage() {
   const [bookingRide, setBookingRide] = useState(null);
   const [detailsRide, setDetailsRide] = useState(null);
 
+  const [showingAll, setShowingAll] = useState(false);
+
   const swapLocations = () => {
     setFrom(to);
     setTo(from);
@@ -80,17 +82,34 @@ export default function FindRidePage() {
     if (!from || !to) { toast('Please enter pickup and destination', 'error'); return; }
     setLoading(true);
     setSearched(false);
+    setShowingAll(false);
     try {
-      // Resolve date to ISO string (today / tomorrow / literal)
       const resolveDate = (d) => {
         if (d === 'Today')    return new Date().toISOString().split('T')[0];
         if (d === 'Tomorrow') { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split('T')[0]; }
-        return null; // named dates like "Sep 1" fall back to no date filter
+        return null;
       };
       const data = await searchRides({ from, to, date: resolveDate(date) });
       setResults(data);
     } catch (err) {
       toast(err.message || 'Search failed', 'error');
+      setResults([]);
+    } finally {
+      setLoading(false);
+      setSearched(true);
+    }
+  };
+
+  const handleShowAll = async () => {
+    setLoading(true);
+    setSearched(false);
+    setShowingAll(true);
+    setActiveFilter('All');
+    try {
+      const data = await searchRides({});
+      setResults(data);
+    } catch (err) {
+      toast(err.message || 'Could not load rides', 'error');
       setResults([]);
     } finally {
       setLoading(false);
@@ -191,6 +210,17 @@ export default function FindRidePage() {
           >
             Search Rides
           </Button>
+
+          {/* Browse all rides */}
+          <button
+            onClick={handleShowAll}
+            disabled={loading}
+            className="w-full mt-3 py-2.5 text-sm font-semibold text-brand-600 hover:text-brand-700
+                       transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+          >
+            <span>Browse all available rides</span>
+            <span className="text-surface-400">→</span>
+          </button>
         </motion.div>
 
         {/* Loading skeletons */}
@@ -226,11 +256,22 @@ export default function FindRidePage() {
             >
               {/* Results header + filters */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold text-surface-900">
-                    {filteredResults.length} rides found
+                    {filteredResults.length} ride{filteredResults.length !== 1 ? 's' : ''} found
                   </p>
-                  <span className="text-surface-400 text-sm">· {from} → {to}</span>
+                  {showingAll
+                    ? <span className="text-surface-400 text-sm">· All available rides</span>
+                    : <span className="text-surface-400 text-sm">· {from} → {to}</span>
+                  }
+                  {showingAll && (
+                    <button
+                      onClick={() => { setSearched(false); setShowingAll(false); setResults([]); }}
+                      className="text-xs text-brand-600 font-semibold hover:text-brand-700 transition-colors bg-brand-50 px-2.5 py-1 rounded-full border border-brand-100"
+                    >
+                      ✕ Clear
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <SlidersHorizontal size={15} className="text-surface-400" />
@@ -282,11 +323,18 @@ export default function FindRidePage() {
                   <div className="text-5xl mb-4">🚗</div>
                   <h3 className="text-xl font-bold text-surface-900 mb-2">No rides found</h3>
                   <p className="text-surface-500 text-sm mb-6">
-                    No rides match this filter. Try a different one.
+                    {showingAll ? 'No rides available right now. Check back soon!' : 'Try different locations or browse all available rides.'}
                   </p>
-                  <Button variant="secondary" onClick={() => setActiveFilter('All')}>
-                    Clear Filter
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button variant="secondary" onClick={() => setActiveFilter('All')}>
+                      Clear Filter
+                    </Button>
+                    {!showingAll && (
+                      <Button onClick={handleShowAll}>
+                        Browse All Rides
+                      </Button>
+                    )}
+                  </div>
                 </motion.div>
               )}
             </motion.div>
@@ -304,7 +352,14 @@ export default function FindRidePage() {
             <div className="w-20 h-20 rounded-3xl bg-brand-50 mx-auto mb-4 flex items-center justify-center">
               <Search size={32} className="text-brand-300" />
             </div>
-            <p className="text-surface-500 font-medium">Search for rides to get started</p>
+            <p className="text-surface-500 font-medium mb-4">Search for rides to get started</p>
+            <button
+              onClick={handleShowAll}
+              className="text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors
+                         bg-brand-50 border border-brand-100 px-5 py-2.5 rounded-2xl"
+            >
+              Browse all available rides →
+            </button>
           </motion.div>
         )}
       </div>
