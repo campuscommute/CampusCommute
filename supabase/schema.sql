@@ -49,6 +49,7 @@ create table if not exists public.profiles (
   role                text not null default 'student' check (role in ('student','admin')),
   avatar_url          text,
   pin_hash            text,                        -- base64(pin:phone), used for sign-in verification
+  auth_id             uuid,                        -- anon session uid for returning users on new devices
   is_verified         boolean not null default false,
   verification_status text not null default 'unsubmitted'
                         check (verification_status in
@@ -241,10 +242,10 @@ create policy "profiles_insert_own"
   on public.profiles for insert
   with check (auth.uid() = id);
 
--- Users can update their own profile
+-- Users can update their own profile (by id or auth_id for returning users on new device)
 create policy "profiles_update_own"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id or auth.uid() = auth_id);
 
 -- Admins: use jwt claim to avoid infinite recursion
 create policy "profiles_admin_all"
