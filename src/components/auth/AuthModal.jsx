@@ -456,12 +456,7 @@ export default function AuthModal({ open, onClose, defaultTab = 'login', onSucce
 
           {/* Logo */}
           <div className="flex justify-center pt-6 pb-2">
-            <div className="w-12 h-12 gradient-brand rounded-2xl flex items-center justify-center shadow-sm">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white">
-                <path d="M12 2C8 2 4 5.5 4 10c0 6 8 12 8 12s8-6 8-12c0-4.5-4-8-8-8z" fill="currentColor" opacity="0.3"/>
-                <path d="M7 11h10M12 7v8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
-            </div>
+            <img src="/logo.png" alt="Campus Commute" className="w-12 h-12 rounded-2xl object-cover shadow-sm" />
           </div>
 
           {/* Tab switcher */}

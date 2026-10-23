@@ -64,14 +64,7 @@ export default function Footer() {
             <ScrollReveal direction="up" delay={0}>
               {/* Logo */}
               <Link to="/" className="inline-flex items-center gap-2.5 group mb-5">
-                <div className="w-10 h-10 gradient-brand rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
-                    <path d="M12 2C8 2 4 5.5 4 10c0 6 8 12 8 12s8-6 8-12c0-4.5-4-8-8-8z" fill="currentColor" opacity="0.3"/>
-                    <path d="M7 11h10M12 7v8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-                    <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
-                    <circle cx="16" cy="14" r="1.5" fill="currentColor"/>
-                  </svg>
-                </div>
+                <img src="/logo.png" alt="Campus Commute" className="w-10 h-10 rounded-xl object-cover shadow-md group-hover:shadow-lg transition-shadow" />
                 <span className="text-xl font-black text-white tracking-tight">
                   Campus <span className="text-brand-400">Commute</span>
                 </span>

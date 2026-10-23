@@ -71,14 +71,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
-            <div className="w-9 h-9 gradient-brand rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
-                <path d="M12 2C8 2 4 5.5 4 10c0 6 8 12 8 12s8-6 8-12c0-4.5-4-8-8-8z" fill="currentColor" opacity="0.3"/>
-                <path d="M7 11h10M12 7v8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-                <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="16" cy="14" r="1.5" fill="currentColor"/>
-              </svg>
-            </div>
+            <img src="/logo.png" alt="Campus Commute" className="w-9 h-9 rounded-xl object-cover shadow-sm group-hover:shadow-md transition-shadow" />
             <span className="text-lg font-bold text-surface-900 tracking-tight">
               Campus <span className="text-brand-600">Commute</span>
             </span>
