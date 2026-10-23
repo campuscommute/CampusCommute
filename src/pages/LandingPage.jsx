@@ -330,11 +330,6 @@ export default function LandingPage() {
                       <p className="font-bold text-surface-900">Your Destination</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black text-brand-600">₹80</p>
-                    <p className="text-xs text-surface-400">per seat</p>
-                    <p className="text-xs text-surface-500 mt-1">3 seats left</p>
-                  </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-surface-100 flex items-center justify-end">
                   <Button size="xs" onClick={() => navigate('/find-ride')}>Find a Ride</Button>

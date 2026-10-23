@@ -28,10 +28,11 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   const [authOpen, setAuthOpen] = useState(true);
 
+  // Still resolving — show tiny non-blocking indicator, not a full-page spinner
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-[3px] border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -39,7 +40,6 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   if (!isAuthenticated) {
     return (
       <>
-        {/* Blurred placeholder behind the modal */}
         <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center select-none pointer-events-none opacity-40">
           <div className="text-6xl mb-4">🔒</div>
           <p className="text-xl font-black text-surface-900">Sign in to continue</p>

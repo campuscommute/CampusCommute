@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Menu, MessageCircle, X } from 'lucide-react';
+import { Bell, LogOut, Menu, MessageCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -152,16 +152,16 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile — Messages icon + hamburger */}
+          {/* Mobile — Bell (notifications/messages) icon + hamburger */}
           <div className="md:hidden flex items-center gap-1">
             {isAuthenticated && (
               <Link
                 to="/messages"
                 className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-100 transition-colors text-surface-600"
               >
-                <MessageCircle size={22} />
+                <Bell size={22} />
                 {unread > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-0.5 bg-brand-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {unread > 9 ? '9+' : unread}
                   </span>
                 )}

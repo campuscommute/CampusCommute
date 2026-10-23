@@ -4,11 +4,7 @@ const supabaseUrl     = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    '❌ Supabase env vars missing.\n' +
-    'Local: make sure .env has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY\n' +
-    'Vercel: add them in Project → Settings → Environment Variables'
-  );
+  console.error('❌ Supabase env vars missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 
 export const supabase = createClient(
@@ -16,9 +12,10 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder',
   {
     auth: {
-      autoRefreshToken:  true,
-      persistSession:    true,
-      detectSessionInUrl: true,
+      autoRefreshToken:   true,
+      persistSession:     true,
+      detectSessionInUrl: false,   // faster — skip URL hash parsing
+      flowType:           'implicit', // avoid PKCE round-trip
     },
   }
 );
