@@ -13,6 +13,15 @@ import { supabase } from '../lib/supabase';
 const AuthContext  = createContext(null);
 const PROFILE_KEY  = 'cc_profile_cache';
 
+// ─── Admin phone list — phones that always get admin access regardless of DB role
+const ADMIN_PHONES = ['9220612315'];
+
+const isAdminPhone = (phone) => {
+  if (!phone) return false;
+  const clean = String(phone).replace(/\D/g, '');
+  return ADMIN_PHONES.some(p => clean === p || clean.endsWith(p));
+};
+
 const hashPin   = (pin, phone) => btoa(`${pin}:${phone.replace(/\D/g, '')}`);
 const verifyPin = (pin, phone, hash) => {
   try { return atob(hash) === `${pin}:${phone.replace(/\D/g, '')}`; }
@@ -205,8 +214,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user && !!profile,
       isVerified:  profile?.is_verified ?? false,
       isFemale:    profile?.gender      === 'female',
-      isAdmin:     profile?.role === 'admin' ||
-                   (profile?.phone ?? '').replace(/\D/g, '').endsWith('9220612315'),
+      isAdmin:     profile?.role === 'admin' || isAdminPhone(profile?.phone),
       signUp,
       signInWithPhone,
       signOut,
