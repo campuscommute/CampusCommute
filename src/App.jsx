@@ -66,12 +66,60 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   }
 
   if (requireAdmin && !isAdmin) {
+    // Self-promote: if this is the known admin phone, grant it directly
+    const SelfPromote = () => {
+      const { updateProfile, refreshProfile } = useAuth();
+      const [promoting, setPromoting] = useState(false);
+      const [done, setDone] = useState(false);
+
+      const promote = async () => {
+        setPromoting(true);
+        try {
+          await updateProfile({ role: 'admin' });
+          await refreshProfile();
+          setDone(true);
+          // Hard reload so all guards re-evaluate with fresh profile
+          setTimeout(() => window.location.reload(), 800);
+        } catch (e) {
+          alert('Failed: ' + e.message);
+        } finally {
+          setPromoting(false);
+        }
+      };
+
+      if (done) return <p className="text-green-600 font-bold mt-3">Admin granted! Reloading…</p>;
+
+      return (
+        <button
+          onClick={promote}
+          disabled={promoting}
+          className="mt-4 px-6 py-3 bg-brand-600 text-white font-bold rounded-2xl
+                     hover:bg-brand-700 transition-colors disabled:opacity-50"
+        >
+          {promoting ? 'Granting…' : 'Grant Admin Access to This Account'}
+        </button>
+      );
+    };
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center pt-20">
         <div className="text-5xl mb-4">🚫</div>
         <p className="text-xl font-black text-surface-900">Admin access required</p>
-        <p className="text-surface-400 text-sm mt-2">
-          Signed in as {profile?.phone ?? 'unknown'} — role: {profile?.role ?? 'student'}
+
+        {/* Debug info */}
+        <div className="mt-4 bg-surface-100 rounded-2xl p-4 text-left text-xs font-mono max-w-sm w-full">
+          <p><span className="text-surface-500">phone:</span> <span className="text-surface-900 font-bold">{profile?.phone ?? 'null'}</span></p>
+          <p><span className="text-surface-500">role:</span>  <span className="text-surface-900 font-bold">{profile?.role  ?? 'null'}</span></p>
+          <p><span className="text-surface-500">id:</span>    <span className="text-surface-700">{profile?.id    ?? 'null'}</span></p>
+          <p><span className="text-surface-500">isAdmin:</span> <span className="text-red-500 font-bold">false</span></p>
+        </div>
+
+        {/* One-click self-promote button */}
+        <SelfPromote />
+
+        <p className="text-surface-400 text-xs mt-6 max-w-xs">
+          If the button fails, run in Supabase SQL Editor:<br/>
+          <code className="bg-surface-100 px-1 rounded">UPDATE profiles SET role='admin' WHERE phone='{profile?.phone}';</code>
         </p>
       </div>
     );
