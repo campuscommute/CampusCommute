@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight, Bell, Camera, Car, CheckCircle,
   ChevronRight, Edit3, GraduationCap, Heart,
-  Lock, LogOut, Mail, MapPin, Phone, Save,
+  HelpCircle, Lock, LogOut, Mail, MapPin, Phone, Save,
   Shield, Star, TrendingUp, User, X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -511,6 +511,12 @@ export default function ProfilePage() {
 
         {/* ── Account ────────────────────────────────────────────────── */}
         <Section title="Account">
+          <SectionRow
+            icon={<HelpCircle size={16} />}
+            label="Help & Support"
+            value="FAQs, contact support, track your tickets"
+            onClick={() => navigate('/support')}
+          />
           <SectionRow
             icon={<Lock size={16} />}
             label="Change PIN"
