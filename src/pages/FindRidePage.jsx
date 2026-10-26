@@ -15,27 +15,21 @@ import { useToast } from '../components/ui/Toast';
 
 const FILTERS = ['All', 'Cheapest', 'Earliest', 'Women Only', 'Female Driver'];
 
-function SelectField({ label, icon, value, onChange, options }) {
-  return (
-    <div className="flex-1 min-w-0">
-      <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">{label}</label>
-      <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500">{icon}</span>
-        <select
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="w-full pl-9 pr-8 py-3 rounded-2xl bg-surface-50 border border-surface-100
-                     text-surface-900 font-semibold text-sm appearance-none
-                     focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
-                     transition-all duration-200 cursor-pointer"
-        >
-          {options.map(o => <option key={o}>{o}</option>)}
-        </select>
-        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
-      </div>
-    </div>
-  );
-}
+const todayISO    = new Date().toISOString().split('T')[0];
+const tomorrowISO = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split('T')[0]; })();
+const maxDate     = (() => { const t = new Date(); t.setDate(t.getDate() + 30); return t.toISOString().split('T')[0]; })();
+
+const toDisplayDate = (iso) => {
+  if (iso === todayISO)    return 'Today';
+  if (iso === tomorrowISO) return 'Tomorrow';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
+const TIME_OPTIONS = [
+  'Any time','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM',
+  '9:00 AM','9:30 AM','10:00 AM','11:00 AM','12:00 PM',
+  '1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','5:30 PM','6:00 PM','7:00 PM','8:00 PM',
+];
 
 export default function FindRidePage() {
   const toast = useToast();
@@ -45,8 +39,8 @@ export default function FindRidePage() {
   const [to,      setTo]      = useState('');
   const [toLat,   setToLat]   = useState(null);
   const [toLng,   setToLng]   = useState(null);
-  const [date, setDate] = useState('Today');
-  const [time, setTime] = useState('8:00 AM');
+  const [date, setDate] = useState(todayISO);   // ISO string
+  const [time, setTime] = useState('Any time');
   const [activeFilter, setActiveFilter] = useState('All');
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,16 +62,11 @@ export default function FindRidePage() {
     setSearched(false);
     setShowingAll(false);
     try {
-      const resolveDate = (d) => {
-        if (d === 'Today')    return new Date().toISOString().split('T')[0];
-        if (d === 'Tomorrow') { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().split('T')[0]; }
-        return null;
-      };
       const data = await searchRides({
         from, to,
         fromLat, fromLng,
         toLat, toLng,
-        date: resolveDate(date),
+        date: date || null,   // already ISO "YYYY-MM-DD"
         radiusKm: 10,
       });
       setResults(data);
@@ -175,20 +164,69 @@ export default function FindRidePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
-            <SelectField
-              label="Date"
-              icon={<Calendar size={15} />}
-              value={date}
-              onChange={setDate}
-              options={['Today', 'Tomorrow', 'Sep 1', 'Sep 2', 'Sep 3']}
-            />
-            <SelectField
-              label="Time"
-              icon={<Clock size={15} />}
-              value={time}
-              onChange={setTime}
-              options={['Any time', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM']}
-            />
+            {/* Date — native picker + quick chips */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">Date</label>
+              {/* Quick-pick chips */}
+              <div className="flex gap-2 mb-2">
+                {[
+                  { label: 'Today',    iso: todayISO    },
+                  { label: 'Tomorrow', iso: tomorrowISO },
+                  { label: 'Any',      iso: ''          },
+                ].map(({ label, iso }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setDate(iso)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all duration-150 ${
+                      date === iso
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-surface-50 text-surface-500 border-surface-200 hover:border-brand-300 hover:text-brand-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <Calendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500 pointer-events-none" />
+                <input
+                  type="date"
+                  min={todayISO}
+                  max={maxDate}
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="w-full pl-9 pr-4 py-3 rounded-2xl bg-surface-50 border border-surface-100
+                             text-surface-900 font-semibold text-sm cursor-pointer
+                             focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
+                             transition-all duration-200"
+                />
+              </div>
+              {date && (
+                <p className="text-xs text-brand-600 font-semibold mt-1 pl-1">
+                  {toDisplayDate(date)}
+                </p>
+              )}
+            </div>
+
+            {/* Time */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-surface-500 mb-1.5 pl-1">Time</label>
+              <div className="relative mt-[30px]">
+                <Clock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-500 pointer-events-none" />
+                <select
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="w-full pl-9 pr-8 py-3 rounded-2xl bg-surface-50 border border-surface-100
+                             text-surface-900 font-semibold text-sm appearance-none cursor-pointer
+                             focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300
+                             transition-all duration-200"
+                >
+                  {TIME_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+              </div>
+            </div>
           </div>
 
           <Button
@@ -252,7 +290,7 @@ export default function FindRidePage() {
                   </p>
                   {showingAll
                     ? <span className="text-surface-400 text-sm">· All available rides</span>
-                    : <span className="text-surface-400 text-sm">· {from} → {to}{(fromLat || toLat) ? ' · within 10km' : ''}</span>
+                    : <span className="text-surface-400 text-sm">· {from} → {to}{date ? ` · ${toDisplayDate(date)}` : ''}{(fromLat || toLat) ? ' · within 10km' : ''}</span>
                   }
                   {showingAll && (
                     <button

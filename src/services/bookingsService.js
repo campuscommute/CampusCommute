@@ -151,3 +151,43 @@ export async function rateBooking(bookingId, { score, comment }) {
   if (error) throw error;
   return data;
 }
+
+// ─── Driver verifies passenger OTP → marks booking active ────────────────────
+export async function driverVerifyOTP(bookingId, enteredOtp) {
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .select('otp, status')
+    .eq('id', bookingId)
+    .single();
+  if (error) throw error;
+  if (booking.otp !== String(enteredOtp)) throw new Error('Incorrect OTP. Ask the passenger for their code.');
+  if (booking.status !== 'confirmed') throw new Error('Booking is not in confirmed state.');
+
+  const { data, error: updateErr } = await supabase
+    .from('bookings')
+    .update({ status: 'active', otp_verified: true, otp_verified_at: new Date().toISOString() })
+    .eq('id', bookingId)
+    .select()
+    .single();
+  if (updateErr) throw updateErr;
+  return data;
+}
+
+// ─── Get my offered rides with their booking counts ────────────────────────────
+export async function getMyOfferedRides(driverId) {
+  const { data, error } = await supabase
+    .from('rides')
+    .select(`
+      *,
+      bookings:bookings(
+        id, status, otp, otp_verified, seats_booked, total_amount,
+        passenger:profiles!bookings_passenger_id_fkey(
+          id, name, college, gender, is_verified, rating, avatar_url, phone
+        )
+      )
+    `)
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}

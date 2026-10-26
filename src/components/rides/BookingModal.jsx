@@ -152,7 +152,7 @@ export default function BookingModal({ ride, open, onClose }) {
               transition={{ delay: 0.45 }}
               className="text-surface-500 text-sm mb-5"
             >
-              {ride.from} → {ride.to} · {ride.time}
+              {ride.from_label ?? ride.from} → {ride.to_label ?? ride.to} · {ride.time}
             </motion.p>
 
             {/* OTP */}

@@ -1,17 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle, ArrowRight, ChevronDown, ChevronUp,
-  MapPin, Navigation, Phone, Share2, X
+  MapPin, Navigation, Phone, Share2, X, Wifi, WifiOff
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getBooking } from '../services/bookingsService';
+import { getRide, subscribeToRideLocation, updateRideLocation } from '../services/ridesService';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Avatar from '../components/ui/Avatar';
 
-// ─── Animated Map ─────────────────────────────────────────────────────────────
-function LiveMap({ from, to }) {
+// ─── Animated Map — shows car moving along route ──────────────────────────────
+function LiveMap({ from, to, driverLat, driverLng, hasLiveLocation }) {
   return (
     <svg viewBox="0 0 400 340" className="w-full h-full" aria-hidden="true">
       {/* Road grid */}
@@ -52,13 +54,13 @@ function LiveMap({ from, to }) {
         <rect x="155" y="20" width="40" height="55" rx="3" />
         <rect x="215" y="15" width="40" height="60" rx="3" />
       </g>
-      {/* Your location */}
+      {/* Pickup point */}
       <g transform="translate(80, 290)">
         <motion.circle cx="0" cy="0" r="20" fill="#6172f3" opacity="0.2"
           animate={{ r: [14, 22, 14] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
         <circle cx="0" cy="0" r="8" fill="#6172f3" />
         <circle cx="0" cy="0" r="4" fill="white" />
-        <text x="-18" y="-14" fill="#a5bcfd" fontSize="8" fontWeight="700">You</text>
+        <text x="-18" y="-14" fill="#a5bcfd" fontSize="8" fontWeight="700">{from?.slice(0, 8) ?? 'Pickup'}</text>
       </g>
       {/* Destination */}
       <g transform="translate(340, 70)">
@@ -66,7 +68,7 @@ function LiveMap({ from, to }) {
         <circle cx="0" cy="0" r="4" fill="white" />
         <text x="-20" y="-14" fill="#fca5a5" fontSize="8" fontWeight="700">{to?.slice(0, 8) ?? 'Dest'}</text>
       </g>
-      {/* Car */}
+      {/* Car — animates along route */}
       <motion.g
         animate={{ x: [0, 30, 70, 120, 165], y: [0, -22, -45, -68, -90] }}
         transition={{ duration: 6, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut', delay: 0.5 }}
@@ -76,6 +78,14 @@ function LiveMap({ from, to }) {
           <text x="-8" y="6" fontSize="14">🚗</text>
         </g>
       </motion.g>
+      {/* Live location indicator */}
+      {hasLiveLocation && (
+        <motion.g initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5, type: 'spring' }}>
+          <rect x="10" y="10" width="100" height="22" rx="6" fill="#22c55e" opacity="0.9" />
+          <text x="60" y="24" fill="white" fontSize="9" fontWeight="700" textAnchor="middle">● LIVE LOCATION</text>
+        </motion.g>
+      )}
       {/* ETA chip */}
       <motion.g initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 1.2, type: 'spring' }}>
@@ -86,39 +96,127 @@ function LiveMap({ from, to }) {
   );
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LiveRidePage() {
-  const toast = useToast();
+  const toast    = useToast();
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [searchParams] = useSearchParams();
-  const bookingId = searchParams.get('bookingId');
+
+  const bookingId  = searchParams.get('bookingId');
+  const rideId     = searchParams.get('rideId');
+  const isDriver   = searchParams.get('driver') === 'true';
 
   const [booking,      setBooking]      = useState(null);
-  const [dataLoading,  setDataLoading]  = useState(!!bookingId);
+  const [ride,         setRide]         = useState(null);
+  const [dataLoading,  setDataLoading]  = useState(true);
   const [cardExpanded, setCardExpanded] = useState(true);
   const [sosActive,    setSosActive]    = useState(false);
   const [detailsOpen,  setDetailsOpen]  = useState(false);
+  const [driverLat,    setDriverLat]    = useState(null);
+  const [driverLng,    setDriverLng]    = useState(null);
+  const [locationSharing, setLocationSharing] = useState(false);
+  const [gpsError,     setGpsError]     = useState(null);
 
-  // Fetch real booking if bookingId is in URL
+  const locationIntervalRef = useRef(null);
+  const watchIdRef = useRef(null);
+
+  // Load data
   useEffect(() => {
-    if (!bookingId) { setDataLoading(false); return; }
-    getBooking(bookingId)
-      .then(setBooking)
-      .catch(() => toast('Could not load ride details', 'error'))
-      .finally(() => setDataLoading(false));
-  }, [bookingId]);
+    const load = async () => {
+      try {
+        if (bookingId) {
+          const b = await getBooking(bookingId);
+          setBooking(b);
+          setRide(b.ride);
+        } else if (rideId) {
+          const r = await getRide(rideId);
+          setRide(r);
+        }
+      } catch {
+        toast('Could not load ride details', 'error');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    load();
+  }, [bookingId, rideId]);
 
-  // Derive display values — real data takes priority, hardcoded fallback for demo
-  const ride   = booking?.ride ?? null;
-  const driver = ride?.driver  ?? null;
+  // Supabase realtime: subscribe to ride location updates (passenger view)
+  useEffect(() => {
+    const targetRideId = ride?.id ?? null;
+    if (!targetRideId || isDriver) return;
 
-  const driverName    = driver?.name           ?? 'Your Driver';
-  const vehicle       = ride?.vehicle_model    ?? 'Your Ride';
-  const plate         = ride?.vehicle_plate    ?? '—';
-  const fromLabel     = ride?.from_label       ?? 'Pickup';
-  const toLabel       = ride?.to_label         ?? 'Destination';
-  const rideTime      = ride?.time             ?? '—';
-  const fare          = booking?.total_amount  ?? ride?.price_per_seat ?? '—';
-  const otp           = booking?.otp           ?? '—';
-  const driverPhone   = driver?.phone          ?? null;
+    const channel = subscribeToRideLocation(targetRideId, ({ lat, lng, status }) => {
+      if (lat && lng) {
+        setDriverLat(lat);
+        setDriverLng(lng);
+      }
+      if (status === 'completed') {
+        toast('Ride completed!', 'success');
+        navigate('/my-rides');
+      }
+    });
+
+    return () => { channel.unsubscribe(); };
+  }, [ride?.id, isDriver]);
+
+  // Driver: GPS watchPosition + push to Supabase
+  const startLocationSharing = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation not supported on this device');
+      return;
+    }
+    setLocationSharing(true);
+    setGpsError(null);
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setDriverLat(lat);
+        setDriverLng(lng);
+        if (ride?.id) {
+          try { await updateRideLocation(ride.id, { lat, lng }); } catch { /* silent */ }
+        }
+      },
+      (err) => {
+        setGpsError(err.message);
+        setLocationSharing(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+  };
+
+  const stopLocationSharing = () => {
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setLocationSharing(false);
+  };
+
+  // Clean up GPS on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  // Derive display values
+  const driver     = ride?.driver ?? null;
+  const driverName = driver?.name ?? 'Your Driver';
+  const vehicle    = [ride?.vehicle_model, ride?.vehicle_color].filter(Boolean).join(' · ') || 'Your Ride';
+  const plate      = ride?.vehicle_plate ?? '—';
+  const fromLabel  = ride?.from_label ?? 'Pickup';
+  const toLabel    = ride?.to_label   ?? 'Destination';
+  const rideTime   = ride?.time       ?? '—';
+  const fare       = booking?.total_amount ?? ride?.price_per_seat ?? '—';
+  const otp        = booking?.otp ?? '—';
+  const driverPhone = driver?.phone ?? null;
+  const hasLiveLocation = !!(driverLat && driverLng);
 
   const handleSOS = () => {
     setSosActive(true);
@@ -133,14 +231,6 @@ export default function LiveRidePage() {
     } else {
       navigator.clipboard?.writeText(window.location.href);
       toast('Ride link copied!', 'success');
-    }
-  };
-
-  const handleCallDriver = () => {
-    if (driverPhone) {
-      window.open(`tel:${driverPhone}`, '_self');
-    } else {
-      toast("Driver's contact is not available", 'info');
     }
   };
 
@@ -164,19 +254,57 @@ export default function LiveRidePage() {
       >
         <div className="flex items-center justify-between px-4 pt-14 pb-4">
           <div className="glass-dark rounded-2xl px-4 py-2.5 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-white text-sm font-semibold">Ride in Progress</span>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${hasLiveLocation ? 'bg-green-400' : 'bg-amber-400'}`} />
+            <span className="text-white text-sm font-semibold">
+              {ride?.status === 'active' ? 'Ride in Progress' : 'Tracking Ride'}
+            </span>
           </div>
           <div className="glass-dark rounded-2xl px-4 py-2.5 flex items-center gap-2">
             <MapPin size={14} className="text-brand-400" />
-            <span className="text-white text-sm font-bold">{fromLabel} → {toLabel}</span>
+            <span className="text-white text-sm font-bold">{fromLabel.split(' ').slice(0, 2).join(' ')} → {toLabel.split(' ').slice(0, 2).join(' ')}</span>
           </div>
         </div>
+
+        {/* Driver: GPS share banner */}
+        {isDriver && (
+          <div className="px-4 pb-2">
+            <div className={`rounded-2xl px-4 py-3 flex items-center justify-between gap-3 ${
+              locationSharing ? 'bg-green-900/80' : 'bg-surface-900/80'
+            } backdrop-blur-sm border border-white/10`}>
+              <div className="flex items-center gap-2">
+                {locationSharing
+                  ? <Wifi size={16} className="text-green-400" />
+                  : <WifiOff size={16} className="text-surface-400" />
+                }
+                <span className="text-white text-xs font-semibold">
+                  {locationSharing ? 'Sharing live location' : 'Location sharing off'}
+                </span>
+                {gpsError && <span className="text-red-300 text-xs">· {gpsError}</span>}
+              </div>
+              <button
+                onClick={locationSharing ? stopLocationSharing : startLocationSharing}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                  locationSharing
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                {locationSharing ? 'Stop' : 'Start Sharing'}
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Map */}
       <div className="flex-1 relative bg-surface-950">
-        <LiveMap from={fromLabel} to={toLabel} />
+        <LiveMap
+          from={fromLabel}
+          to={toLabel}
+          driverLat={driverLat}
+          driverLng={driverLng}
+          hasLiveLocation={hasLiveLocation}
+        />
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-surface-950 to-transparent pointer-events-none" />
       </div>
 
@@ -196,7 +324,7 @@ export default function LiveRidePage() {
         <div className="flex items-center gap-3 py-4 border-b border-surface-800">
           <Avatar name={driverName} size="md" verified={driver?.is_verified} />
           <div className="flex-1">
-            <p className="font-bold text-white">{driverName} is on the way</p>
+            <p className="font-bold text-white">{isDriver ? 'You are driving' : `${driverName} is on the way`}</p>
             <p className="text-surface-400 text-sm">{vehicle}{plate !== '—' ? ` · ${plate}` : ''}</p>
           </div>
           <div className="text-right">
@@ -205,12 +333,12 @@ export default function LiveRidePage() {
           </div>
         </div>
 
-        {/* ETA progress bar */}
+        {/* Progress bar */}
         <div className="py-3 border-b border-surface-800">
           <div className="flex justify-between text-xs text-surface-400 font-medium mb-2">
-            <span className="flex items-center gap-1"><MapPin size={11} /> {fromLabel}</span>
+            <span className="flex items-center gap-1"><MapPin size={11} /> {fromLabel.split(' ').slice(0, 2).join(' ')}</span>
             <span className="text-brand-400 font-semibold">~18 min</span>
-            <span className="flex items-center gap-1"><Navigation size={11} /> {toLabel}</span>
+            <span className="flex items-center gap-1"><Navigation size={11} /> {toLabel.split(' ').slice(0, 2).join(' ')}</span>
           </div>
           <div className="h-1.5 bg-surface-800 rounded-full overflow-hidden">
             <motion.div
@@ -233,19 +361,36 @@ export default function LiveRidePage() {
               className="overflow-hidden"
             >
               <div className="flex gap-3 pt-4 pb-5">
-                <Button variant="ghost" size="md" icon={<Share2 size={16} />} onClick={handleShare}
-                  className="flex-1 bg-surface-800 text-white hover:bg-surface-700 rounded-2xl">
-                  Share
-                </Button>
-                <motion.button onClick={handleSOS} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                {!isDriver && (
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    icon={<Share2 size={16} />}
+                    onClick={handleShare}
+                    className="flex-1 bg-surface-800 text-white hover:bg-surface-700 rounded-2xl"
+                  >
+                    Share
+                  </Button>
+                )}
+                <motion.button
+                  onClick={handleSOS}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   animate={sosActive ? { scale: [1,1.1,1], backgroundColor: ['#dc2626','#991b1b','#dc2626'] } : {}}
                   transition={sosActive ? { duration: 0.5, repeat: 3 } : {}}
                   className={`w-14 h-10 rounded-2xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
                     sosActive ? 'bg-red-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
                   }`}
-                >SOS</motion.button>
-                <Button variant="ghost" size="md" icon={<ChevronUp size={16} />} onClick={() => setDetailsOpen(true)}
-                  className="flex-1 bg-surface-800 text-white hover:bg-surface-700 rounded-2xl">
+                >
+                  SOS
+                </motion.button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  icon={<ChevronUp size={16} />}
+                  onClick={() => setDetailsOpen(true)}
+                  className="flex-1 bg-surface-800 text-white hover:bg-surface-700 rounded-2xl"
+                >
                   Details
                 </Button>
               </div>
@@ -264,8 +409,10 @@ export default function LiveRidePage() {
           >
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-white">Ride Details</h3>
-              <button onClick={() => setDetailsOpen(false)}
-                className="w-8 h-8 rounded-full bg-surface-800 flex items-center justify-center text-surface-400 hover:text-white transition-colors">
+              <button
+                onClick={() => setDetailsOpen(false)}
+                className="w-8 h-8 rounded-full bg-surface-800 flex items-center justify-center text-surface-400 hover:text-white transition-colors"
+              >
                 <X size={16} />
               </button>
             </div>
@@ -276,18 +423,29 @@ export default function LiveRidePage() {
               { label: 'Route',        value: `${fromLabel} → ${toLabel}` },
               { label: 'Pickup Time',  value: rideTime },
               { label: 'Fare',         value: fare !== '—' ? `₹${fare}` : '—' },
-              { label: 'OTP',          value: otp },
+              ...(!isDriver ? [{ label: 'OTP', value: otp }] : []),
+              { label: 'Location',     value: hasLiveLocation ? `${driverLat?.toFixed(4)}, ${driverLng?.toFixed(4)}` : 'Not available' },
             ].map(item => (
               <div key={item.label} className="flex justify-between py-3 border-b border-surface-800 last:border-0">
                 <span className="text-surface-400 text-sm">{item.label}</span>
-                <span className="text-white text-sm font-semibold">{item.value}</span>
+                <span className={`text-sm font-semibold ${item.label === 'OTP' ? 'text-amber-400 font-mono' : 'text-white'}`}>{item.value}</span>
               </div>
             ))}
-            <div className="pt-4">
-              <Button fullWidth variant="danger" icon={<Phone size={16} />} onClick={handleCallDriver}>
-                Call Driver
-              </Button>
-            </div>
+            {!isDriver && (
+              <div className="pt-4">
+                <Button
+                  fullWidth
+                  variant="danger"
+                  icon={<Phone size={16} />}
+                  onClick={() => {
+                    if (driverPhone) window.open(`tel:${driverPhone}`, '_self');
+                    else toast("Driver's contact is not available", 'info');
+                  }}
+                >
+                  Call Driver
+                </Button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -193,3 +193,106 @@ export async function expireOldRides() {
     // Silently ignore — best-effort cleanup
   }
 }
+
+// ─── Helper: get the caller's profile id (stable DB id, not anon auth uid) ───
+// Needed because driver_id in rides = profile.id, not auth.uid()
+async function getCallerProfileId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+  const uid = session.user.id;
+  // Try id first, then auth_id
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .or(`id.eq.${uid},auth_id.eq.${uid}`)
+    .maybeSingle();
+  return data?.id ?? uid;
+}
+
+// ─── Start a ride (driver action) ─────────────────────────────────────────────
+export async function startRide(rideId) {
+  const profileId = await getCallerProfileId();
+  const { data, error } = await supabase
+    .from('rides')
+    .update({ status: 'active', started_at: new Date().toISOString() })
+    .eq('id', rideId)
+    .eq('driver_id', profileId)   // belt-and-suspenders: filter + RLS
+    .select()
+    .single();
+  if (error) throw error;
+  if (!data) throw new Error('Ride not found or you are not the driver.');
+  return data;
+}
+
+// ─── Complete a ride (driver action) ─────────────────────────────────────────
+export async function completeRide(rideId) {
+  const profileId = await getCallerProfileId();
+  const { data, error } = await supabase
+    .from('rides')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', rideId)
+    .eq('driver_id', profileId)
+    .select()
+    .single();
+  if (error) throw error;
+  if (!data) throw new Error('Ride not found or you are not the driver.');
+
+  // Mark all active/confirmed bookings as completed
+  await supabase
+    .from('bookings')
+    .update({ status: 'completed' })
+    .eq('ride_id', rideId)
+    .in('status', ['confirmed', 'active']);
+
+  return data;
+}
+
+// ─── Get all confirmed bookings for a ride (driver sees passenger list + OTPs) ─
+export async function getRidePassengers(rideId) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      passenger:profiles!bookings_passenger_id_fkey(
+        id, name, college, gender, is_verified, rating, avatar_url, phone
+      )
+    `)
+    .eq('ride_id', rideId)
+    .in('status', ['confirmed', 'active', 'pending'])
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ─── Update driver GPS location (called by watchPosition during active ride) ──
+// Silently ignores errors — GPS updates are best-effort
+export async function updateRideLocation(rideId, { lat, lng }) {
+  await supabase
+    .from('rides')
+    .update({
+      current_lat:         lat,
+      current_lng:         lng,
+      location_updated_at: new Date().toISOString(),
+    })
+    .eq('id', rideId);
+}
+
+// ─── Subscribe to live location updates for a ride ────────────────────────────
+export function subscribeToRideLocation(rideId, onUpdate) {
+  return supabase
+    .channel(`ride_location:${rideId}`)
+    .on(
+      'postgres_changes',
+      {
+        event:  'UPDATE',
+        schema: 'public',
+        table:  'rides',
+        filter: `id=eq.${rideId}`,
+      },
+      (payload) => {
+        const { current_lat, current_lng, status, location_updated_at } = payload.new;
+        onUpdate({ lat: current_lat, lng: current_lng, status, updatedAt: location_updated_at });
+      }
+    )
+    .subscribe();
+}

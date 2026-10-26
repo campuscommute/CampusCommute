@@ -231,6 +231,8 @@ end $$;
 drop policy if exists "storage_insert_auth"  on storage.objects;
 drop policy if exists "storage_select_own"   on storage.objects;
 drop policy if exists "storage_admin_select" on storage.objects;
+drop policy if exists "storage_update_own"   on storage.objects;
+drop policy if exists "storage_insert_driver" on storage.objects;
 
 -- ── profiles ──────────────────────────────────────────────────────────────────
 -- Anyone (including anon) can read profiles
@@ -259,17 +261,42 @@ create policy "profiles_admin_all"
 create policy "rides_select_all"
   on public.rides for select using (true);
 
-create policy "rides_insert_verified"
+-- Allow insert when auth.uid() matches driver_id directly (new account)
+-- OR when auth.uid() is the auth_id of the profile whose id = driver_id (returning user on new device)
+create policy "rides_insert_driver"
   on public.rides for insert
   with check (
     auth.uid() = driver_id
+    or exists (
+      select 1 from public.profiles
+      where id = driver_id
+        and auth_id = auth.uid()
+    )
   );
 
+-- Allow update if auth session owns the driver profile (direct or via auth_id)
 create policy "rides_update_driver"
-  on public.rides for update using (auth.uid() = driver_id);
+  on public.rides for update
+  using (
+    auth.uid() = driver_id
+    or exists (
+      select 1 from public.profiles
+      where id = driver_id
+        and auth_id = auth.uid()
+    )
+  );
 
+-- Allow delete if auth session owns the driver profile
 create policy "rides_delete_driver"
-  on public.rides for delete using (auth.uid() = driver_id);
+  on public.rides for delete
+  using (
+    auth.uid() = driver_id
+    or exists (
+      select 1 from public.profiles
+      where id = driver_id
+        and auth_id = auth.uid()
+    )
+  );
 
 create policy "rides_admin_all"
   on public.rides for all
@@ -281,25 +308,45 @@ create policy "rides_admin_all"
 create policy "bookings_select_parties"
   on public.bookings for select
   using (
+    -- passenger (direct id or auth_id match)
     auth.uid() = passenger_id
     or exists (
-      select 1 from public.profiles where (id = auth.uid() or auth_id = auth.uid())
+      select 1 from public.profiles
+      where id = passenger_id and auth_id = auth.uid()
+    )
+    -- driver (direct id or auth_id match via rides join)
+    or exists (
+      select 1 from public.profiles
+      where (id = auth.uid() or auth_id = auth.uid())
         and id = (select driver_id from public.rides where id = ride_id)
     )
-    or auth.uid() = (select driver_id from public.rides where id = ride_id)
   );
 
-create policy "bookings_insert_verified"
+create policy "bookings_insert_passenger"
   on public.bookings for insert
   with check (
     auth.uid() = passenger_id
+    or exists (
+      select 1 from public.profiles
+      where id = passenger_id and auth_id = auth.uid()
+    )
   );
 
 create policy "bookings_update_parties"
   on public.bookings for update
   using (
+    -- passenger
     auth.uid() = passenger_id
-    or auth.uid() = (select driver_id from public.rides where id = ride_id)
+    or exists (
+      select 1 from public.profiles
+      where id = passenger_id and auth_id = auth.uid()
+    )
+    -- driver
+    or exists (
+      select 1 from public.profiles
+      where (id = auth.uid() or auth_id = auth.uid())
+        and id = (select driver_id from public.rides where id = ride_id)
+    )
   );
 
 create policy "bookings_admin_all"
