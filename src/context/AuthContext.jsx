@@ -48,8 +48,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Hard timeout — never block the UI more than 400ms
-    const timeout = setTimeout(() => setLoading(false), 400);
+    // Hard timeout:
+    // - If we have a cached profile, 600ms is enough (session verify + race)
+    // - If no cache (fresh visit / new device), give Supabase 3s to fully load
+    const timeout = setTimeout(() => setLoading(false), cached ? 600 : 3000);
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       clearTimeout(timeout);
@@ -203,7 +205,8 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user && !!profile,
       isVerified:  profile?.is_verified ?? false,
       isFemale:    profile?.gender      === 'female',
-      isAdmin:     profile?.role        === 'admin' || profile?.phone === '9220612315',
+      isAdmin:     profile?.role === 'admin' ||
+                   (profile?.phone ?? '').replace(/\D/g, '').endsWith('9220612315'),
       signUp,
       signInWithPhone,
       signOut,

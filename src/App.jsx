@@ -25,10 +25,10 @@ const FULLSCREEN_PAGES = ['/live-ride'];
 
 // ─── Route guard: requires auth, shows modal if not logged in ────────────────
 function ProtectedRoute({ children, requireAdmin = false }) {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading, profile } = useAuth();
   const [authOpen, setAuthOpen] = useState(true);
 
-  // Still resolving — show tiny non-blocking indicator, not a full-page spinner
+  // Still resolving auth — show spinner
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-50 flex items-center justify-center">
@@ -41,7 +41,7 @@ function ProtectedRoute({ children, requireAdmin = false }) {
     return (
       <>
         <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center select-none pointer-events-none opacity-40">
-          <div className="text-6xl mb-4">🔒</div>
+          <div className="text-5xl mb-4">🔒</div>
           <p className="text-xl font-black text-surface-900">Sign in to continue</p>
           <p className="text-surface-400 text-sm mt-2">You need an account to access this page.</p>
         </div>
@@ -55,12 +55,24 @@ function ProtectedRoute({ children, requireAdmin = false }) {
     );
   }
 
+  // For admin routes: if profile hasn't fully loaded yet, wait a bit more
+  // (profile may arrive slightly after the 400ms auth timeout)
+  if (requireAdmin && !profile) {
+    return (
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (requireAdmin && !isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center pt-20">
-        <div className="text-6xl mb-4">🚫</div>
+        <div className="text-5xl mb-4">🚫</div>
         <p className="text-xl font-black text-surface-900">Admin access required</p>
-        <p className="text-surface-400 text-sm mt-2">You don't have permission to view this page.</p>
+        <p className="text-surface-400 text-sm mt-2">
+          Signed in as {profile?.phone ?? 'unknown'} — role: {profile?.role ?? 'student'}
+        </p>
       </div>
     );
   }
