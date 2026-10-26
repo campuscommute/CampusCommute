@@ -182,17 +182,20 @@ export function AuthProvider({ children }) {
   // ─── Update profile ───────────────────────────────────────────────────────
   const updateProfile = useCallback(async (updates) => {
     if (!user) return;
+    // Use profile.id (stable DB pk) — user.id is the anon auth uid which can
+    // differ on new-device logins when the profile was created on another session
+    const profileId = profile?.id ?? user.id;
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
-      .or(`id.eq.${user.id},auth_id.eq.${user.id}`)
+      .eq('id', profileId)
       .select()
       .single();
     if (error) throw error;
     setProfile(data);
     writeCachedProfile(data);
     return data;
-  }, [user]);
+  }, [user, profile]);
 
   return (
     <AuthContext.Provider value={{

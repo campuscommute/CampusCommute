@@ -18,40 +18,40 @@ const STEPS = [
 // ─── Step indicator ───────────────────────────────────────────────────────────
 function StepIndicator({ currentStep }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-10">
+    <div className="flex items-start justify-center gap-0 mb-10">
       {STEPS.map((step, i) => {
-        const done = i < currentStep;
+        const done   = i < currentStep;
         const active = i === currentStep;
         return (
-          <div key={step.num} className="flex items-center">
-            <motion.div
-              animate={{
-                backgroundColor: done || active ? '#4a51e8' : '#e4e8f2',
-                scale: active ? 1.1 : 1,
-              }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center"
-            >
-              <div className={`
-                w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm
-                transition-all duration-300
-                ${done ? 'bg-brand-600 text-white shadow-sm'
-                : active ? 'bg-brand-600 text-white shadow-md ring-4 ring-brand-100'
-                : 'bg-surface-100 text-surface-400'}
-              `}>
+          <div key={step.num} className="flex items-start">
+            {/* Step circle + label */}
+            <div className="flex flex-col items-center w-16 sm:w-20">
+              <motion.div
+                animate={{ scale: active ? 1.08 : 1 }}
+                transition={{ duration: 0.3 }}
+                className={`
+                  w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm
+                  transition-all duration-300
+                  ${done   ? 'bg-brand-600 text-white shadow-sm'
+                  : active ? 'bg-brand-600 text-white shadow-md ring-4 ring-brand-100'
+                  : 'bg-surface-100 text-surface-400'}
+                `}
+              >
                 {done ? <CheckCircle size={18} /> : step.icon}
-              </div>
+              </motion.div>
               <span className={`
-                text-[11px] font-semibold mt-1.5 whitespace-nowrap
+                text-[11px] font-semibold mt-1.5 text-center leading-tight
                 ${active ? 'text-brand-600' : done ? 'text-surface-600' : 'text-surface-300'}
               `}>
                 {step.label}
               </span>
-            </motion.div>
+            </div>
+
+            {/* Connector line — centered vertically on the circles */}
             {i < STEPS.length - 1 && (
-              <div className="flex items-center mx-2 mb-5">
+              <div className="mt-5 mx-1 flex-1 w-8 sm:w-12">
                 <motion.div
-                  className="h-0.5 w-10 sm:w-16"
+                  className="h-0.5 w-full"
                   animate={{ backgroundColor: done ? '#4a51e8' : '#e4e8f2' }}
                   transition={{ duration: 0.4 }}
                 />
@@ -314,7 +314,7 @@ function StepReview() {
       </div>
 
       <p className="text-xs text-surface-400">
-        You'll receive a notification once verified. 🎓
+        You'll receive a notification once verified.
       </p>
     </motion.div>
   );

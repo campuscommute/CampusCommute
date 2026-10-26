@@ -189,13 +189,21 @@ function OfferedRideCard({ ride, index, onUpdate }) {
 
   const handleStart = async () => {
     if (confirmed.length === 0) {
-      toast('No confirmed passengers yet', 'info');
+      toast('No confirmed passengers yet. Wait for bookings to be confirmed.', 'info');
+      return;
+    }
+    // Block start until every confirmed passenger has verified their OTP
+    const unverified = confirmed.filter(b => !b.otp_verified && b.status !== 'active');
+    if (unverified.length > 0) {
+      const names = unverified.map(b => b.passenger?.name ?? 'Passenger').join(', ');
+      toast(`Verify OTP for: ${names} before starting`, 'error');
+      setExpanded(true); // open passenger list so driver can see who needs verification
       return;
     }
     setStarting(true);
     try {
       await startRide(ride.id);
-      toast('Ride started! 🚗', 'success');
+      toast('Ride started!', 'success');
       onUpdate?.();
     } catch (err) {
       toast(err.message || 'Failed to start ride', 'error');
@@ -347,14 +355,15 @@ function OfferedRideCard({ ride, index, onUpdate }) {
       {status === 'upcoming' && (
         <div className="flex gap-2">
           <Button
-            variant="primary"
+            variant={allVerified || confirmed.length === 0 ? 'primary' : 'secondary'}
             size="sm"
             className="flex-1"
             icon={<Play size={14} />}
             loading={starting}
             onClick={handleStart}
+            title={!allVerified && confirmed.length > 0 ? 'Verify all passenger OTPs first' : ''}
           >
-            Start Ride
+            {!allVerified && confirmed.length > 0 ? 'Verify OTPs First' : 'Start Ride'}
           </Button>
           <Button
             variant="secondary"
@@ -657,8 +666,8 @@ export default function MyRidesPage() {
         {/* Mode toggle: Passenger / Driver */}
         <div className="flex gap-1 bg-surface-100 rounded-2xl p-1 mb-5">
           {[
-            { id: 'passenger', label: '🎒 As Passenger' },
-            { id: 'driver',    label: '🚗 As Driver' },
+            { id: 'passenger', label: 'As Passenger' },
+            { id: 'driver',    label: 'As Driver' },
           ].map(m => (
             <button
               key={m.id}

@@ -372,8 +372,8 @@ export default function ProfilePage() {
 
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {isVerified
-                  ? <Badge variant="brand">🎓 Verified Student</Badge>
-                  : <Badge variant="warning">⏳ Unverified</Badge>
+                  ? <Badge variant="brand">Verified Student</Badge>
+                  : <Badge variant="warning">Unverified</Badge>
                 }
                 {displayCollege !== 'College' && (
                   <Badge variant="neutral">{displayCollege}</Badge>
