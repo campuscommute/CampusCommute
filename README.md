@@ -1,6 +1,6 @@
 # Campus Commute 🚗
 
-> A student ride-sharing platform built for college commuters — verified, safe, and affordable.
+> A student-only ride-sharing platform built for college commuters — verified, safe, and affordable.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat&logo=vite)](https://vitejs.dev)
@@ -22,6 +22,7 @@
 - [Environment Variables](#environment-variables)
 - [Database Schema](#database-schema)
 - [API Endpoints](#api-endpoints)
+- [Security Audit](#security-audit)
 
 ---
 
@@ -402,5 +403,37 @@ The Express REST API runs on `http://localhost:5000`.
 
 ---
 
+## Making Yourself Admin
 
+After creating your account, run in **Supabase → SQL Editor**:
 
+```sql
+UPDATE public.profiles
+SET role = 'admin'
+WHERE phone = '9220612315';
+```
+
+Then sign out, clear localStorage, and sign back in. Navigate to `/admin`.
+
+---
+
+## License
+
+MIT © Campus Commute
+
+---
+
+## Security Audit
+
+A full in-depth static security audit has been performed. See **[SECURITY_AUDIT.md](./SECURITY_AUDIT.md)** for the complete report.
+
+**20 findings identified — severity breakdown:**
+
+| Severity | Count | Examples |
+|---|---|---|
+| 🔴 Critical | 3 | PIN in Base64, profiles publicly readable, pin_hash exposed |
+| 🟠 High | 7 | OTP plain-text storage, role self-escalation, no-auth Edge Function |
+| 🟡 Medium | 7 | No OTP expiry, race condition on seats, gender rule UI-only |
+| 🟢 Low / Info | 3 | No CSRF docs, error message leakage, JWT secret length |
+
+> **Note:** No code has been changed as part of the audit. All findings are documented only.
