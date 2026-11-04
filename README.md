@@ -1,6 +1,6 @@
 # Campus Commute 🚗
 
-> A student-only ride-sharing platform built for college commuters — verified, safe, and affordable.
+> A student ride-sharing platform built for college commuters — verified, safe, and affordable.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat&logo=vite)](https://vitejs.dev)
@@ -402,20 +402,5 @@ The Express REST API runs on `http://localhost:5000`.
 
 ---
 
-## Making Yourself Admin
 
-After creating your account, run in **Supabase → SQL Editor**:
 
-```sql
-UPDATE public.profiles
-SET role = 'admin'
-WHERE phone = '9220612315';
-```
-
-Then sign out, clear localStorage, and sign back in. Navigate to `/admin`.
-
----
-
-## License
-
-MIT © Campus Commute
